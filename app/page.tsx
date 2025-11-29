@@ -132,7 +132,9 @@ export default async function Home() {
               ))}
             </div>
           </section>
-          <Button>Register new pet</Button>
+          <Link href="/register-pet">
+            <Button>Register new pet</Button>
+          </Link>
 
           <section className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-2 rounded-3xl bg-blue-50 p-6 flex flex-col justify-between min-h-60">
