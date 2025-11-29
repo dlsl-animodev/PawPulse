@@ -1,5 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
+
+@theme {
+  --font-sans: "Nunito", sans-serif;
+  --font-display: "Fredoka", sans-serif;
+
+  --color-paw-primary: #f97316;
+  --color-paw-primaryDark: #ea580c;
+  --color-paw-secondary: #2dd4bf;
+  --color-paw-accent: #fbbf24;
+  --color-paw-pink: #f472b6;
+  --color-paw-soft: #fff7ed;
+  --color-paw-text: #475569;
+  --color-paw-dark: #1e293b;
+
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
+
+  --animate-wiggle: wiggle 3s ease-in-out infinite;
+  --animate-wiggle-fast: wiggle 0.5s ease-in-out infinite;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-bounce-slow: bounce 3s infinite;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+}
+
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -142,6 +177,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
