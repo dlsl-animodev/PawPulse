@@ -124,7 +124,10 @@ export function AppointmentDetails({
 
   const appointmentDate = new Date(appointment.date);
   const isPast = appointmentDate < new Date();
-  const isUpcoming = !isPast && appointment.status !== "cancelled" && appointment.status !== "completed";
+  const isUpcoming =
+    !isPast &&
+    appointment.status !== "cancelled" &&
+    appointment.status !== "completed";
   const chatPartnerName = isDoctor
     ? appointment.patient.full_name
     : `Dr. ${appointment.doctors.name}`;
