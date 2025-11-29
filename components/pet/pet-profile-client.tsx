@@ -73,7 +73,7 @@ export default function PetProfile({ pet }: { pet: PetServerPayload }) {
             <Badge variant="outline">Upcoming</Badge>
             <div className="flex items-center justify-between">
               <p className="font-semibold text-lg">
-                Next appointment: {appointments[0].date ?? "TBD"}
+                Next appointment: {appointments[0].scheduled_at ? new Date(appointments[0].scheduled_at).toLocaleDateString() : "TBD"}
               </p>
               <Button className="bg-orange-600 text-white">
                 <ArrowBigRight />
@@ -164,9 +164,9 @@ export default function PetProfile({ pet }: { pet: PetServerPayload }) {
                   {appointments.length > 0 ? (
                     appointments.map((a) => (
                       <tr key={a.id ?? JSON.stringify(a)}>
-                        <td className="px-4 py-2">{a.date}</td>
-                        <td className="px-4 py-2">{a.reason}</td>
-                        <td className="px-4 py-2">{a.vet_name}</td>
+                        <td className="px-4 py-2">{a.scheduled_at ? new Date(a.scheduled_at).toLocaleDateString() : ""}</td>
+                        <td className="px-4 py-2">{a.symptoms || a.visit_type || ""}</td>
+                        <td className="px-4 py-2">{a.vet_name || ""}</td>
                       </tr>
                     ))
                   ) : (
@@ -209,10 +209,10 @@ export default function PetProfile({ pet }: { pet: PetServerPayload }) {
                   {prescriptions.length > 0 ? (
                     prescriptions.map((p) => (
                       <tr key={p.id ?? JSON.stringify(p)}>
-                        <td className="px-4 py-2">{p.date ?? p.date_issued}</td>
-                        <td className="px-4 py-2">{p.medication}</td>
-                        <td className="px-4 py-2">{p.dosage}</td>
-                        <td className="px-4 py-2">{p.vet_name}</td>
+                        <td className="px-4 py-2">{p.created_at ? new Date(p.created_at).toLocaleDateString() : ""}</td>
+                        <td className="px-4 py-2">{p.medication_name || ""}</td>
+                        <td className="px-4 py-2">{p.dosage || ""}</td>
+                        <td className="px-4 py-2">{p.vet_name || ""}</td>
                       </tr>
                     ))
                   ) : (
@@ -238,7 +238,7 @@ export default function PetProfile({ pet }: { pet: PetServerPayload }) {
               <table className="min-w-full border">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Date", "Condition", "Treatment", "Notes"].map((h) => (
+                    {["Date", "Condition", "Status", "Notes"].map((h) => (
                       <th
                         key={h}
                         className="px-4 py-2 text-left text-xs uppercase"
@@ -253,10 +253,10 @@ export default function PetProfile({ pet }: { pet: PetServerPayload }) {
                   {history.length > 0 ? (
                     history.map((h) => (
                       <tr key={h.id ?? JSON.stringify(h)}>
-                        <td className="px-4 py-2">{h.date}</td>
-                        <td className="px-4 py-2">{h.condition}</td>
-                        <td className="px-4 py-2">{h.treatment}</td>
-                        <td className="px-4 py-2">{h.notes}</td>
+                        <td className="px-4 py-2">{h.diagnosed_at ? new Date(h.diagnosed_at).toLocaleDateString() : (h.created_at ? new Date(h.created_at).toLocaleDateString() : "")}</td>
+                        <td className="px-4 py-2">{h.condition_name || ""}</td>
+                        <td className="px-4 py-2">{h.status || ""}</td>
+                        <td className="px-4 py-2">{h.notes || ""}</td>
                       </tr>
                     ))
                   ) : (

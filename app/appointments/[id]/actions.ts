@@ -88,21 +88,24 @@ export async function createPrescription(data: {
     return { error: "A pet must be selected to create a prescription" };
   }
 
-  // security: verify the veterinarian has an appointment with this pet/owner
-  const { data: appointment } = await supabase
+  // security: verify the veterinarian is assigned to this specific appointment
+  const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
-    .select("id")
+    .select("id, owner_id, pet_id")
+    .eq("id", data.appointmentId)
     .eq("veterinarian_id", vet.id)
-    .eq("owner_id", data.ownerId)
     .single();
 
-  if (!appointment) {
-    return { error: "You can only prescribe for pets you have appointments with" };
+  if (appointmentError || !appointment) {
+    console.error("Prescription security check failed:", appointmentError);
+    return { error: "You can only prescribe for appointments assigned to you" };
   }
+
+  const ownerId = appointment.owner_id;
 
   const { error } = await supabase.from("prescriptions").insert({
     pet_id: petId,
-    owner_id: data.ownerId,
+    owner_id: ownerId,
     veterinarian_id: vet.id,
     appointment_id: data.appointmentId,
     medication_name: data.medicationName,

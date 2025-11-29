@@ -9,7 +9,7 @@ export default async function PetProfilePage({
 }) {
   const petId = (await searchParams).petId;
   if (!petId) {
-    return <div className="p-6 text-red-500">No petId provided. 
+    return <div className="p-6 text-red-500">No petId provided.
     </div>;
   }
 
@@ -53,19 +53,19 @@ async function getPetById(petId: string) {
       .from("appointments")
       .select("*")
       .eq("pet_id", petId)
-      .order("date", { ascending: false });
+      .order("scheduled_at", { ascending: false });
 
     const prescriptionsPromise = supabase
       .from("prescriptions")
       .select("*")
       .eq("pet_id", petId)
-      .order("date_issued", { ascending: false });
+      .order("created_at", { ascending: false });
 
     const historyPromise = supabase
-      .from("pet_medical_history")
+      .from("pet_conditions")
       .select("*")
       .eq("pet_id", petId)
-      .order("date", { ascending: false });
+      .order("created_at", { ascending: false });
 
     const [
       { data: pet, error: petError },
