@@ -37,8 +37,8 @@ export function PetHeaderActions({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const handleSignOut = async () => {
-        await signout();
         setIsMenuOpen(false);
+        await signout();
     };
 
     const userName = profile?.full_name || user?.email || "Guest";
@@ -64,6 +64,8 @@ export function PetHeaderActions({
             document.body.style.overflow = "auto";
         };
     }, [isMenuOpen]);
+
+
 
     return (
         <>
