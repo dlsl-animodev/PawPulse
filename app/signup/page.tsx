@@ -128,7 +128,7 @@ function SignupForm() {
   return (
     <Card className="w-full max-w-md ">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center text-blue-900">
+        <CardTitle className="text-2xl font-bold text-center text-orange-900">
           {isUpgrade && isAnonymous ? "Complete Your Account" : "Join PetCare"}
         </CardTitle>
         <CardDescription className="text-center">
@@ -141,7 +141,7 @@ function SignupForm() {
       <form action={handleSubmit}>
         <CardContent className="space-y-4">
           {isUpgrade && isAnonymous && (
-            <div className="p-3 text-sm text-blue-700 bg-blue-50 rounded-md border border-blue-200">
+            <div className="p-3 text-sm text-orange-700 bg-orange-50 rounded-md border border-orange-200">
               Your consultation history will be saved to your new account
             </div>
           )}
@@ -189,7 +189,7 @@ function SignupForm() {
                 onClick={() => setRole("pet_owner")}
                 className={`p-3 rounded-lg border-2 text-center transition-all hover:cursor-pointer ${
                   role === "pet_owner"
-                    ? "border-blue-600 bg-blue-50 text-blue-700"
+                    ? "border-amber-600 bg-amber-50 text-orange-700"
                     : "border-gray-200 hover:border-gray-300"
                 }`}
               >
@@ -201,7 +201,7 @@ function SignupForm() {
                 onClick={() => setRole("veterinarian")}
                 className={`p-3 rounded-lg border-2 text-center transition-all hover:cursor-pointer ${
                   role === "veterinarian"
-                    ? "border-blue-600 bg-blue-50 text-blue-700"
+                    ? "border-amber-600 bg-amber-50 text-orange-700"
                     : "border-gray-200 hover:border-gray-300"
                 }`}
               >
