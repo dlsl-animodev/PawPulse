@@ -183,12 +183,14 @@ export type BookingInitialData = {
 
 export default function BookingForm({
   doctors,
+  pets = [],
   contactInfo,
   initialDoctorId,
   isGuest = false,
   initialData,
 }: {
   doctors: Doctor[];
+  pets?: any[];
   contactInfo: ContactInfo;
   initialDoctorId?: string;
   isGuest?: boolean;
@@ -209,6 +211,10 @@ export default function BookingForm({
       initialData?.doctorId ||
       initialDoctorId ||
       ""
+  );
+
+  const [selectedPetId, setSelectedPetId] = useState<string>(
+    () => storedBooking?.booking?.petId || ""
   );
 
   // editable contact info for guests
@@ -403,6 +409,10 @@ export default function BookingForm({
   }
 
   function handleDoctorSelection(doctorId: string) {
+    if (!selectedPetId) {
+      toast.error("Please select a pet before choosing a doctor.");
+      return;
+    }
     setSelectedDoctorId(doctorId);
     setSelectedTime("");
     setTakenTimes([]);
@@ -412,6 +422,11 @@ export default function BookingForm({
   }
 
   async function handleSubmit(formData: FormData) {
+    if (!selectedPetId) {
+      setError("Please select a pet before booking.");
+      toast.error("Please select a pet before booking.");
+      return;
+    }
     if (!selectedDoctorId) {
       setError("Please choose a doctor before booking.");
       toast.error("Please choose a doctor before booking.");
@@ -450,6 +465,7 @@ export default function BookingForm({
         booking: {
           notes,
           doctorId: selectedDoctorId,
+          petId: selectedPetId,
           date: dateFieldValue,
           time: selectedTime,
         },
@@ -618,6 +634,7 @@ export default function BookingForm({
     >
       {/* Hidden Inputs */}
       <input type="hidden" name="veterinarianId" value={selectedDoctorId} />
+      <input type="hidden" name="petId" value={selectedPetId} />
       <input type="hidden" name="date" value={dateFieldValue} />
       <input type="hidden" name="time" value={selectedTime} />
       <input type="hidden" name="symptoms" value={notes} />
@@ -698,6 +715,65 @@ export default function BookingForm({
         {/* Step 1: Doctor Selection */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            {/* Pet selection: choose a pet first */}
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-slate-600 mb-2">
+                Select Pet
+              </h3>
+              {pets && pets.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {pets.map((pet) => (
+                    <button
+                      key={pet.id}
+                      type="button"
+                      onClick={() => setSelectedPetId(pet.id)}
+                      className={cn(
+                        "text-left rounded-2xl p-3 flex gap-3 items-center transition-all border",
+                        selectedPetId === pet.id
+                          ? "bg-blue-600 text-white"
+                          : "bg-white"
+                      )}
+                    >
+                      <div className="h-10 w-10 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center text-sm">
+                        {pet.profile_image_url ? (
+                          <Image
+                            src={pet.profile_image_url}
+                            alt={pet.name}
+                            width={40}
+                            height={40}
+                            className="object-cover h-full w-full"
+                          />
+                        ) : (
+                          <span className="text-slate-600">
+                            {pet.name?.[0]}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-semibold truncate">
+                          {pet.name}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {pet.species} {pet.breed ? `• ${pet.breed}` : ""}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl border border-dashed text-center text-sm">
+                  You don't have any registered pets yet.{" "}
+                  <Link
+                    href="/register-pet"
+                    className="text-blue-600 hover:underline"
+                  >
+                    Register a pet
+                  </Link>{" "}
+                  to continue.
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-col md:flex-row gap-3 mb-2">
               <div className="relative flex-1">
                 <Input

@@ -41,11 +41,29 @@ export async function getGeminiApiKey() {
 
 const createAppointmentSchema = z.object({
   veterinarianId: z.string().uuid({ message: "Choose a valid veterinarian." }),
-  petId: z.string().uuid({ message: "Choose a valid pet." }).optional().nullable().transform(val => val || undefined),
+  petId: z
+    .string()
+    .uuid({ message: "Choose a valid pet." })
+    .optional()
+    .nullable()
+    .transform((val) => val || undefined),
   date: z.string().min(1, "Date is required."),
   time: z.string().min(1, "Time is required."),
-  symptoms: z.string().min(5, "Please describe your pet's symptoms or reason for visit."),
-  visitType: z.enum(["checkup", "vaccination", "surgery", "grooming", "emergency", "dental", "follow_up", "other"]).default("checkup"),
+  symptoms: z
+    .string()
+    .min(5, "Please describe your pet's symptoms or reason for visit."),
+  visitType: z
+    .enum([
+      "checkup",
+      "vaccination",
+      "surgery",
+      "grooming",
+      "emergency",
+      "dental",
+      "follow_up",
+      "other",
+    ])
+    .default("checkup"),
 });
 
 const guestPreConsultSchema = z.object({
@@ -55,7 +73,9 @@ const guestPreConsultSchema = z.object({
   petBreed: z.string().optional(),
   petAge: z.string().optional(),
   petWeightKg: z.coerce.number().positive().optional(),
-  symptoms: z.string().min(10, "Share a brief description of your pet's symptoms."),
+  symptoms: z
+    .string()
+    .min(10, "Share a brief description of your pet's symptoms."),
   goal: z
     .string()
     .min(5, "Let us know what you want to achieve from this visit.")
@@ -89,7 +109,8 @@ export async function getVeterinarians(): Promise<Veterinarian[]> {
 
   const { data: veterinarians, error } = await supabase
     .from("veterinarians")
-    .select(`
+    .select(
+      `
       *,
       vet_clinics (
         id,
@@ -97,7 +118,8 @@ export async function getVeterinarians(): Promise<Veterinarian[]> {
         city,
         emergency_services
       )
-    `)
+    `
+    )
     .eq("is_available", true)
     .order("name");
 
@@ -112,11 +134,14 @@ export async function getVeterinarians(): Promise<Veterinarian[]> {
 // backwards compatibility alias
 export const getDoctors = getVeterinarians;
 
-export async function getVeterinarianById(id: string): Promise<Veterinarian | null> {
+export async function getVeterinarianById(
+  id: string
+): Promise<Veterinarian | null> {
   const supabase = await createClient();
   const { data: veterinarian, error } = await supabase
     .from("veterinarians")
-    .select(`
+    .select(
+      `
       *,
       vet_clinics (
         id,
@@ -124,7 +149,8 @@ export async function getVeterinarianById(id: string): Promise<Veterinarian | nu
         city,
         emergency_services
       )
-    `)
+    `
+    )
     .eq("id", id)
     .single();
 
@@ -185,11 +211,14 @@ export async function createGuestPreConsult(formData: FormData) {
 export async function createAppointment(formData: FormData) {
   const supabase = await createClient();
 
-  const veterinarianId = (formData.get("veterinarianId") || formData.get("doctorId")) as string | null;
+  const veterinarianId = (formData.get("veterinarianId") ||
+    formData.get("doctorId")) as string | null;
   const petId = formData.get("petId") as string | null;
   const date = formData.get("date") as string | null;
   const time = formData.get("time") as string | null;
-  const symptoms = (formData.get("symptoms") || formData.get("notes")) as string | null;
+  const symptoms = (formData.get("symptoms") || formData.get("notes")) as
+    | string
+    | null;
   const visitType = formData.get("visitType") as string | null;
 
   const parsed = createAppointmentSchema.safeParse({
@@ -207,9 +236,7 @@ export async function createAppointment(formData: FormData) {
     return { error: message };
   }
 
-  const scheduledAt = new Date(
-    `${parsed.data.date}T${parsed.data.time}:00`
-  );
+  const scheduledAt = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
 
   if (Number.isNaN(scheduledAt.getTime())) {
     return { error: "Invalid appointment date or time." };

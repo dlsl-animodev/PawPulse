@@ -24,12 +24,14 @@ type ContactInfo = {
 
 interface BookingPageClientProps {
   doctors: Doctor[];
+  pets?: any[];
   contactInfo: ContactInfo;
   isGuest: boolean;
 }
 
 export default function BookingPageClient({
   doctors,
+  pets = [],
   contactInfo,
   isGuest,
 }: BookingPageClientProps) {
@@ -127,6 +129,7 @@ Preferences: ${result.preferredDate || "None"} at ${
   return (
     <BookingForm
       doctors={doctors}
+      pets={pets}
       contactInfo={contactInfo}
       isGuest={isGuest}
       initialData={initialData}

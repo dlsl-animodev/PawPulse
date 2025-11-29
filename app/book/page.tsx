@@ -1,6 +1,7 @@
 import BookingPageClient from "./booking-page-client";
 import { getDoctors } from "./actions";
 import { createClient } from "@/utils/supabase/server";
+import { fetchAllPets } from "@/app/pet-profile/actions";
 
 function splitName(name: string | null | undefined) {
   if (!name) return { firstName: "", lastName: "" };
@@ -47,12 +48,14 @@ export default async function BookPage() {
   }
 
   const doctors = await getDoctors();
+  const pets = await fetchAllPets();
 
   return (
     <div className="min-h-screen bg-linear-to-b from-blue-50 via-white to-white py-6 px-4">
       <div className="max-w-5xl mx-auto">
         <BookingPageClient
           doctors={doctors}
+          pets={pets}
           contactInfo={contactInfo}
           isGuest={isGuest}
         />

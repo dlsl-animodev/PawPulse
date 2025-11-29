@@ -167,11 +167,13 @@ export function DashboardClient({
   const userEmail = user.email || "";
 
   const upcomingPatientAppointments = patientAppointments.filter(
-    (apt) => new Date(apt.scheduled_at) >= new Date() && apt.status !== "completed"
+    (apt) =>
+      new Date(apt.scheduled_at) >= new Date() && apt.status !== "completed"
   );
   const pastAppointments = patientAppointments
     .filter(
-      (apt) => new Date(apt.scheduled_at) < new Date() || apt.status === "completed"
+      (apt) =>
+        new Date(apt.scheduled_at) < new Date() || apt.status === "completed"
     )
     .slice(0, 5);
   const refillReminders = prescriptions
@@ -465,15 +467,20 @@ export function DashboardClient({
                             {apt.owner?.full_name || "Pet Owner"}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            {apt.pets?.name ? `${apt.pets.name} (${apt.pets.species})` : apt.owner?.email}
+                            {apt.pets?.name
+                              ? `${apt.pets.name} (${apt.pets.species})`
+                              : apt.owner?.email}
                           </p>
                           <div className="flex items-center gap-3 text-sm text-gray-500 mt-2">
                             <div className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
-                              {new Date(apt.scheduled_at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(apt.scheduled_at).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
                             </div>
                             <span
                               className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -498,7 +505,9 @@ export function DashboardClient({
                                 open: true,
                                 appointmentId: apt.id,
                                 patientName:
-                                  apt.pets?.name || apt.owner?.full_name || "Pet",
+                                  apt.pets?.name ||
+                                  apt.owner?.full_name ||
+                                  "Pet",
                               })
                             }
                           >
@@ -514,8 +523,7 @@ export function DashboardClient({
                                 open: true,
                                 petId: apt.pets?.id || "",
                                 ownerId: apt.owner?.id || "",
-                                petName:
-                                  apt.pets?.name || "Pet",
+                                petName: apt.pets?.name || "Pet",
                               })
                             }
                           >
@@ -563,11 +571,15 @@ export function DashboardClient({
                               {apt.owner?.full_name || "Pet Owner"}
                             </p>
                             <p className="text-sm text-gray-500">
-                              {new Date(apt.scheduled_at).toLocaleDateString()} at{" "}
-                              {new Date(apt.scheduled_at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(apt.scheduled_at).toLocaleDateString()}{" "}
+                              at{" "}
+                              {new Date(apt.scheduled_at).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
                             </p>
                           </div>
                         </Link>
@@ -594,7 +606,9 @@ export function DashboardClient({
                                     open: true,
                                     appointmentId: apt.id,
                                     patientName:
-                                      apt.pets?.name || apt.owner?.full_name || "Pet",
+                                      apt.pets?.name ||
+                                      apt.owner?.full_name ||
+                                      "Pet",
                                   })
                                 }
                                 className="hover:cursor-pointer"
@@ -609,8 +623,7 @@ export function DashboardClient({
                                     open: true,
                                     petId: apt.pets?.id || "",
                                     ownerId: apt.owner?.id || "",
-                                    petName:
-                                      apt.pets?.name || "Pet",
+                                    petName: apt.pets?.name || "Pet",
                                   })
                                 }
                                 className="hover:cursor-pointer"
@@ -739,9 +752,12 @@ export function DashboardClient({
                             {new Date(apt.scheduled_at).getDate()}
                           </span>
                           <span className="text-sm font-medium text-blue-900 uppercase">
-                            {new Date(apt.scheduled_at).toLocaleString("default", {
-                              month: "short",
-                            })}
+                            {new Date(apt.scheduled_at).toLocaleString(
+                              "default",
+                              {
+                                month: "short",
+                              }
+                            )}
                           </span>
                         </div>
                         <div className="p-6 flex-1 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -760,10 +776,13 @@ export function DashboardClient({
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <div className="flex items-center gap-1">
                                 <Clock className="h-4 w-4" />
-                                {new Date(apt.scheduled_at).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {new Date(apt.scheduled_at).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
                               </div>
                               <div className="flex items-center gap-1">
                                 <div
@@ -1004,7 +1023,9 @@ export function DashboardClient({
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-gray-700">
-                                    {new Date(apt.scheduled_at).toLocaleDateString()}
+                                    {new Date(
+                                      apt.scheduled_at
+                                    ).toLocaleDateString()}
                                   </p>
                                   <Badge
                                     variant="outline"
