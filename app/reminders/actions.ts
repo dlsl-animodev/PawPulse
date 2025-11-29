@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import type { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 export async function getReminders() {
     const supabase = await createClient();
@@ -10,21 +11,22 @@ export async function getReminders() {
         .select("*")
         .order("sent_at", { ascending: true });
 
-    // get pet name
+    // ---- Fetch pet data ----
     const petId = reminderData.data?.[0]?.pet_id;
-    let petData;
+
+    let petData: PostgrestSingleResponse<{ name: string } | null> | null = null;
     if (petId) {
         petData = await supabase
             .from("pets")
             .select("name")
             .eq("id", petId)
             .single();
-
-        // get veterinarian
     }
 
-    let vet;
+    // ---- Fetch veterinarian data ----
     const vetId = reminderData.data?.[0]?.reminder_by;
+
+    let vet: PostgrestSingleResponse<{ name: string } | null> | null = null;
     if (vetId) {
         vet = await supabase
             .from("veterinarians")
@@ -38,8 +40,8 @@ export async function getReminders() {
         data: reminderData.data
             ? reminderData.data.map((reminder) => ({
                   ...reminder,
-                  name: petData?.data?.name || "Unknown Pet",
-                  veterinarian: vet?.data?.name || "Unknown Veterinarian",
+                  name: petData?.data?.name ?? "Unknown Pet",
+                  veterinarian: vet?.data?.name ?? "Unknown Veterinarian",
               }))
             : null,
         status: reminderData.status,
