@@ -14,6 +14,7 @@ import {
   CalendarCheck,
   Video,
   PillBottle,
+  LayoutDashboard,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 
@@ -153,6 +154,20 @@ export default async function Home() {
 
             {/* Right: stacked cards (narrower) */}
             <div className="flex flex-col gap-6">
+              <Link
+                href="/dashboard"
+                className="rounded-2xl border border-slate-200 bg-white p-7 flex items-center gap-4 hover:shadow-md transition"
+              >
+                <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                  <LayoutDashboard className="h-6 w-6" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-900">Dashboard</h4>
+                  <p className="text-xs text-slate-500">
+                    View your consultations
+                  </p>
+                </div>
+              </Link>
               <div className="rounded-2xl border border-slate-200 bg-white p-7 flex items-center gap-4 hover:shadow-md transition">
                 <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
                   <Pill className="h-6 w-6" />
