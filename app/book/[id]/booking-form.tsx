@@ -146,7 +146,7 @@ function SubmitButton({
     <Button
       type="submit"
       disabled={disabled}
-      className="w-full py-6 text-lg font-semibold bg-blue-600 hover:bg-blue-700 hover:cursor-pointer rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
+      className="w-full py-6 text-lg font-semibold bg-paw-primary hover:bg-paw-primaryDark hover:cursor-pointer rounded-2xl shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
     >
       {pending ? (
         <span className="flex items-center gap-2">
@@ -180,6 +180,40 @@ export type BookingInitialData = {
   date?: Date;
   time?: string;
 };
+
+function DoctorAvatar({
+  src,
+  alt,
+  className,
+}: {
+  src?: string | null;
+  alt: string;
+  className?: string;
+}) {
+  const placeHolderImages = ["/doc_placeholder.png", "/doc_placeholder_2.png"];
+
+  function getRandomPlaceholder() {
+    const index = Math.floor(Math.random() * placeHolderImages.length);
+    return placeHolderImages[index];
+  }
+
+  const [imgSrc, setImgSrc] = useState(src || getRandomPlaceholder());
+
+  useEffect(() => {
+    setImgSrc(src || getRandomPlaceholder());
+  }, [src]);
+
+  return (
+    <Image
+      src={imgSrc}
+      alt={alt}
+      width={56}
+      height={56}
+      className={className}
+      onError={() => setImgSrc(getRandomPlaceholder())}
+    />
+  );
+}
 
 export default function BookingForm({
   doctors,
@@ -361,7 +395,7 @@ export default function BookingForm({
   }, [doctors]);
 
   const filteredDoctors = useMemo(() => {
-    return doctors.filter((doctor) => {
+    const filtered = doctors.filter((doctor) => {
       const matchSpecialty =
         specialtyFilter === "all" || doctor.specialty === specialtyFilter;
       const term = search.toLowerCase().trim();
@@ -373,7 +407,16 @@ export default function BookingForm({
           (doctor.bio || "").toLowerCase().includes(term))
       );
     });
-  }, [doctors, specialtyFilter, search]);
+
+    if (selectedDoctorId) {
+      return filtered.sort((a, b) => {
+        if (a.id === selectedDoctorId) return -1;
+        if (b.id === selectedDoctorId) return 1;
+        return 0;
+      });
+    }
+    return filtered;
+  }, [doctors, specialtyFilter, search, selectedDoctorId]);
 
   const dateFieldValue = useMemo(
     () => normalizeDateInput(selectedDate),
@@ -483,7 +526,7 @@ export default function BookingForm({
 
   // Stepper Logic
   const steps = [
-    { id: 1, title: "Specialist", icon: Stethoscope },
+    { id: 1, title: "Vet", icon: Stethoscope },
     { id: 2, title: "Date & Time", icon: CalendarIcon },
     { id: 3, title: "Details", icon: Sparkles },
     ...(isGuest ? [{ id: 4, title: "Contact", icon: UserRound }] : []),
@@ -530,16 +573,16 @@ export default function BookingForm({
       (d) => d.id === preConsultData?.doctorId
     );
     return (
-      <div className="rounded-3xl border border-blue-100 bg-white/70 backdrop-blur-sm p-8 shadow-sm max-w-xl mx-auto">
+      <div className="rounded-3xl border border-orange-100 bg-white/70 backdrop-blur-sm p-8 shadow-sm max-w-xl mx-auto">
         <div className="text-center space-y-6">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <UserPlus className="w-10 h-10 text-green-600" />
+          <div className="w-20 h-20 bg-paw-soft rounded-full flex items-center justify-center mx-auto">
+            <UserPlus className="w-10 h-10 text-paw-primary" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">
+            <h3 className="text-2xl font-bold text-paw-dark mb-2">
               Your Pre-Consultation is Saved
             </h3>
-            <p className="text-slate-600 max-w-md mx-auto">
+            <p className="text-paw-text max-w-md mx-auto">
               Create an account to complete your booking and access all CareLink
               features.
             </p>
@@ -547,11 +590,11 @@ export default function BookingForm({
 
           {/* show saved consultation details */}
           {preConsultData && (
-            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-left max-w-md mx-auto">
-              <p className="text-sm font-medium text-blue-900 mb-2">
+            <div className="bg-paw-soft border border-orange-100 rounded-2xl p-4 text-left max-w-md mx-auto">
+              <p className="text-sm font-medium text-paw-dark mb-2">
                 Saved consultation details:
               </p>
-              <div className="space-y-1 text-sm text-blue-800">
+              <div className="space-y-1 text-sm text-paw-text">
                 {selectedDoctor && (
                   <p>
                     Doctor:{" "}
@@ -569,9 +612,9 @@ export default function BookingForm({
                   </span>
                 </p>
                 {preConsultData.notes && (
-                  <p className="mt-2 pt-2 border-t border-blue-200">
+                  <p className="mt-2 pt-2 border-t border-orange-200">
                     Notes:{" "}
-                    <span className="text-blue-700">
+                    <span className="text-paw-primaryDark">
                       {preConsultData.notes.slice(0, 100)}
                       {preConsultData.notes.length > 100 ? "..." : ""}
                     </span>
@@ -583,20 +626,20 @@ export default function BookingForm({
 
           <div className="space-y-3 max-w-sm mx-auto">
             <Link href={redirectUrl || "/signup?upgrade=true"}>
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 hover:cursor-pointer py-3 text-base">
+              <Button className="w-full bg-paw-primary hover:bg-paw-primaryDark hover:cursor-pointer py-3 text-base">
                 <UserPlus className="w-4 h-4 mr-2" />
                 Create Account to Book
               </Button>
             </Link>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-paw-text">
               Already have an account?{" "}
-              <Link href="/login" className="text-blue-600 hover:underline">
+              <Link href="/login" className="text-paw-primary hover:underline">
                 Sign in
               </Link>
             </p>
             <Button
               variant="ghost"
-              className="w-full text-slate-500 hover:text-slate-700 hover:cursor-pointer"
+              className="w-full text-paw-text hover:text-paw-dark hover:cursor-pointer"
               onClick={() => {
                 setRequiresRegistration(false);
                 setPreConsultData(null);
@@ -648,13 +691,13 @@ export default function BookingForm({
       {/* Header - Only visible on Step 1 */}
       {step === 1 && (
         <div className="text-center space-y-3 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <p className="text-xs tracking-[0.3em] uppercase text-blue-500 font-bold">
+          <p className="text-xs tracking-[0.3em] uppercase text-paw-primary font-bold">
             CareLink Booking
           </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-3xl md:text-4xl font-bold text-paw-dark tracking-tight">
             Schedule your consultation
           </h1>
-          <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
+          <p className="text-paw-text max-w-md mx-auto leading-relaxed">
             Choose from {doctors.length} trusted specialists to get started.
           </p>
         </div>
@@ -668,16 +711,16 @@ export default function BookingForm({
               (() => {
                 const Icon = steps[step - 1].icon;
                 return (
-                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                  <div className="p-1.5 bg-paw-soft text-paw-primary rounded-lg">
                     <Icon className="w-4 h-4" />
                   </div>
                 );
               })()}
-            <span className="text-sm font-bold text-slate-900">
+            <span className="text-sm font-bold text-paw-dark">
               {steps[step - 1].title}
             </span>
           </div>
-          <span className="text-xs font-medium text-slate-400">
+          <span className="text-xs font-medium text-paw-text">
             Step {step} of {totalSteps}
           </span>
         </div>
@@ -687,7 +730,7 @@ export default function BookingForm({
               key={s.id}
               className={cn(
                 "h-1.5 flex-1 rounded-full transition-all duration-500",
-                s.id <= step ? "bg-blue-600" : "bg-slate-100"
+                s.id <= step ? "bg-paw-primary" : "bg-orange-100"
               )}
             />
           ))}
@@ -698,37 +741,20 @@ export default function BookingForm({
         {/* Step 1: Doctor Selection */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
-            <div className="flex flex-col md:flex-row gap-3 mb-2">
-              <div className="relative flex-1">
+            <div className="">
+              <div className="relative">
                 <Input
-                  placeholder="Search doctors..."
+                  placeholder="Search vets..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  className="pl-10 rounded-2xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all"
+                  className="pl-10 rounded-2xl h-12 bg-paw-soft border-transparent focus:bg-white transition-all"
                 />
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar mask-linear-fade">
-                {specialties.map((specialty) => (
-                  <button
-                    key={specialty}
-                    type="button"
-                    onClick={() => setSpecialtyFilter(specialty)}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all hover:cursor-pointer border",
-                      specialtyFilter === specialty
-                        ? "bg-slate-900 text-white border-slate-900"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                    )}
-                  >
-                    {specialty === "all" ? "All" : specialty}
-                  </button>
-                ))}
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-paw-text/50" />
               </div>
             </div>
 
             {filteredDoctors.length === 0 ? (
-              <div className="text-center text-slate-500 py-12 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+              <div className="text-center text-paw-text py-12 bg-paw-soft rounded-3xl border border-dashed border-orange-200">
                 No doctors match your search.
               </div>
             ) : (
@@ -741,8 +767,8 @@ export default function BookingForm({
                     className={cn(
                       "text-left rounded-2xl p-4 flex gap-4 transition-all hover:cursor-pointer group relative overflow-hidden",
                       selectedDoctorId === doctor.id
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-200 scale-[1.02]"
-                        : "bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md"
+                        ? "bg-paw-primary text-white shadow-lg shadow-orange-200 scale-[1.02]"
+                        : "bg-white border border-orange-100 hover:border-orange-200 hover:shadow-md"
                     )}
                   >
                     <div
@@ -750,17 +776,12 @@ export default function BookingForm({
                         "h-14 w-14 rounded-xl overflow-hidden shrink-0",
                         selectedDoctorId === doctor.id
                           ? "bg-white/20"
-                          : "bg-blue-50"
+                          : "bg-paw-soft"
                       )}
                     >
-                      <Image
-                        src={
-                          doctor.image_url ||
-                          "https://placehold.co/96x96?text=Dr"
-                        }
+                      <DoctorAvatar
+                        src={doctor.image_url}
                         alt={doctor.name}
-                        width={56}
-                        height={56}
                         className="h-full w-full object-cover"
                       />
                     </div>
@@ -769,8 +790,8 @@ export default function BookingForm({
                         className={cn(
                           "text-xs uppercase tracking-wide font-bold mb-0.5",
                           selectedDoctorId === doctor.id
-                            ? "text-blue-100"
-                            : "text-blue-500"
+                            ? "text-orange-100"
+                            : "text-paw-primary"
                         )}
                       >
                         {doctor.specialty}
@@ -780,7 +801,7 @@ export default function BookingForm({
                           "text-base font-bold truncate",
                           selectedDoctorId === doctor.id
                             ? "text-white"
-                            : "text-slate-900"
+                            : "text-paw-dark"
                         )}
                       >
                         {doctor.name}
@@ -789,8 +810,8 @@ export default function BookingForm({
                         className={cn(
                           "text-xs line-clamp-1",
                           selectedDoctorId === doctor.id
-                            ? "text-blue-100"
-                            : "text-slate-500"
+                            ? "text-orange-100"
+                            : "text-paw-text"
                         )}
                       >
                         {doctor.bio || "Available for consultation"}
@@ -812,12 +833,12 @@ export default function BookingForm({
         {step === 2 && (
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <Label className="text-base font-semibold text-slate-900 ml-1">
+              <Label className="text-base font-semibold text-paw-dark ml-1">
                 Select Date
               </Label>
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                  <span className="font-semibold text-slate-900">
+              <div className="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-orange-100 flex items-center justify-between bg-paw-soft/50">
+                  <span className="font-semibold text-paw-dark">
                     {currentMonth.toLocaleDateString("en-US", {
                       month: "long",
                       year: "numeric",
@@ -857,7 +878,7 @@ export default function BookingForm({
                 </div>
 
                 <div className="p-4">
-                  <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  <div className="grid grid-cols-7 text-center text-[10px] font-bold text-paw-text/50 uppercase tracking-wider mb-2">
                     {"SunMonTueWedThuFriSat".match(/.{1,3}/g)?.map((day) => (
                       <div key={day}>{day}</div>
                     ))}
@@ -880,10 +901,10 @@ export default function BookingForm({
                           className={cn(
                             "aspect-square rounded-xl text-sm font-medium transition-all flex items-center justify-center relative",
                             isSelected
-                              ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                              : "text-slate-700 hover:bg-slate-50",
+                              ? "bg-paw-primary text-white shadow-md shadow-orange-200"
+                              : "text-paw-text hover:bg-paw-soft",
                             isDisabled && "opacity-20 cursor-not-allowed",
-                            isOutsideMonth && !isSelected && "text-slate-300"
+                            isOutsideMonth && !isSelected && "text-paw-text/30"
                           )}
                         >
                           {day.getDate()}
@@ -896,13 +917,13 @@ export default function BookingForm({
             </div>
 
             <div className="space-y-4">
-              <Label className="text-base font-semibold text-slate-900 ml-1">
+              <Label className="text-base font-semibold text-paw-dark ml-1">
                 Available Times
               </Label>
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 min-h-[320px]">
+              <div className="bg-white rounded-3xl border border-orange-100 shadow-sm p-5 min-h-[320px]">
                 <div className="grid grid-cols-3 gap-2">
                   {availableSlots.length === 0 ? (
-                    <div className="col-span-full text-center py-12 text-slate-400">
+                    <div className="col-span-full text-center py-12 text-paw-text/50">
                       No slots available
                     </div>
                   ) : (
@@ -922,10 +943,10 @@ export default function BookingForm({
                           className={cn(
                             "py-3 px-2 rounded-xl text-sm font-medium border transition-all",
                             isActive
-                              ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200"
-                              : "bg-white text-slate-700 border-slate-200 hover:border-blue-300",
+                              ? "bg-paw-primary text-white border-paw-primary shadow-md shadow-orange-200"
+                              : "bg-white text-paw-text border-orange-200 hover:border-orange-300",
                             disabled &&
-                              "opacity-40 cursor-not-allowed bg-slate-50"
+                              "opacity-40 cursor-not-allowed bg-paw-soft"
                           )}
                         >
                           {formatSlotLabel(slot)}
@@ -942,17 +963,17 @@ export default function BookingForm({
         {/* Step 3: Details */}
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
-            <div className="bg-white rounded-3xl border border-slate-200 p-1 shadow-sm">
+            <div className="bg-white rounded-3xl border border-orange-200 p-1 shadow-sm">
               <Textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Please describe your symptoms or reason for visit..."
                 rows={8}
-                className="rounded-[20px] border-0 focus-visible:ring-0 resize-none text-base p-4 placeholder:text-slate-400"
+                className="rounded-[20px] border-0 focus-visible:ring-0 resize-none text-base p-4 placeholder:text-paw-text/50"
               />
             </div>
-            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-2xl text-blue-700 text-sm">
+            <div className="flex items-start gap-3 p-4 bg-paw-soft rounded-2xl text-paw-primaryDark text-sm">
               <Info className="w-5 h-5 shrink-0 mt-0.5" />
               <p>
                 Your notes are encrypted and only visible to your doctor. Please
@@ -1027,26 +1048,21 @@ export default function BookingForm({
         {/* Step 5 (or 4): Review */}
         {step === totalSteps && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
-            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm divide-y divide-slate-100">
+            <div className="bg-white rounded-3xl border border-orange-200 overflow-hidden shadow-sm divide-y divide-orange-100">
               {/* Doctor Summary */}
               <div className="p-5 flex items-center gap-4">
-                <div className="h-14 w-14 rounded-xl overflow-hidden bg-blue-50 shrink-0">
-                  <Image
-                    src={
-                      selectedDoctor?.image_url ||
-                      "https://placehold.co/96x96?text=Dr"
-                    }
+                <div className="h-14 w-14 rounded-xl overflow-hidden bg-paw-soft shrink-0">
+                  <DoctorAvatar
+                    src={selectedDoctor?.image_url}
                     alt={selectedDoctor?.name || "Doctor"}
-                    width={56}
-                    height={56}
                     className="h-full w-full object-cover"
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs uppercase tracking-wide text-blue-500 font-bold">
-                    Specialist
+                  <p className="text-xs uppercase tracking-wide text-paw-primary font-bold">
+                    Veterinary Specialist
                   </p>
-                  <p className="text-base font-bold text-slate-900 truncate">
+                  <p className="text-base font-bold text-paw-dark truncate">
                     {selectedDoctor?.name}
                   </p>
                 </div>
@@ -1054,7 +1070,7 @@ export default function BookingForm({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
+                  className="text-paw-primary hover:bg-paw-soft rounded-full px-3"
                   onClick={() => setStep(1)}
                 >
                   Change
@@ -1063,14 +1079,14 @@ export default function BookingForm({
 
               {/* Date & Time Summary */}
               <div className="p-5 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
+                <div className="h-10 w-10 rounded-full bg-paw-soft flex items-center justify-center shrink-0 text-paw-primary">
                   <CalendarIcon className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-500">
+                  <p className="text-sm font-medium text-paw-text">
                     Date & Time
                   </p>
-                  <p className="text-base font-semibold text-slate-900">
+                  <p className="text-base font-semibold text-paw-dark">
                     {selectedDate.toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
@@ -1082,7 +1098,7 @@ export default function BookingForm({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
+                  className="text-paw-primary hover:bg-paw-soft rounded-full px-3"
                   onClick={() => setStep(2)}
                 >
                   Change
@@ -1091,12 +1107,12 @@ export default function BookingForm({
 
               {/* Notes Summary */}
               <div className="p-5 flex items-start gap-4">
-                <div className="h-10 w-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0 text-purple-600">
+                <div className="h-10 w-10 rounded-full bg-paw-secondary/10 flex items-center justify-center shrink-0 text-paw-secondary">
                   <Info className="h-5 w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-500">Notes</p>
-                  <p className="text-sm text-slate-700 mt-1 line-clamp-2">
+                  <p className="text-sm font-medium text-paw-text">Notes</p>
+                  <p className="text-sm text-paw-text mt-1 line-clamp-2">
                     {notes || "No notes provided"}
                   </p>
                 </div>
@@ -1104,7 +1120,7 @@ export default function BookingForm({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
+                  className="text-paw-primary hover:bg-paw-soft rounded-full px-3"
                   onClick={() => setStep(3)}
                 >
                   Edit
@@ -1114,17 +1130,15 @@ export default function BookingForm({
               {/* Guest Contact Summary */}
               {isGuest && (
                 <div className="p-5 flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0 text-amber-600">
+                  <div className="h-10 w-10 rounded-full bg-paw-accent/20 flex items-center justify-center shrink-0 text-yellow-600">
                     <UserRound className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-500">
-                      Contact
-                    </p>
-                    <p className="text-base font-semibold text-slate-900 truncate">
+                    <p className="text-sm font-medium text-paw-text">Contact</p>
+                    <p className="text-base font-semibold text-paw-dark truncate">
                       {guestContact.firstName} {guestContact.lastName}
                     </p>
-                    <p className="text-xs text-slate-500 truncate">
+                    <p className="text-xs text-paw-text truncate">
                       {guestContact.email}
                     </p>
                   </div>
@@ -1132,7 +1146,7 @@ export default function BookingForm({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
+                    className="text-paw-primary hover:bg-paw-soft rounded-full px-3"
                     onClick={() => setStep(4)}
                   >
                     Edit
@@ -1145,13 +1159,13 @@ export default function BookingForm({
       </div>
 
       {/* Navigation Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-slate-200 z-50 md:static md:bg-transparent md:p-0 md:border-0 md:mt-8 flex items-center justify-between">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-orange-200 z-50 md:static md:bg-transparent md:p-0 md:border-0 md:mt-8 flex items-center justify-between">
         {step > 1 ? (
           <Button
             type="button"
             variant="ghost"
             onClick={prevStep}
-            className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl px-4 h-12 text-base font-medium"
+            className="text-paw-text hover:text-paw-dark hover:bg-paw-soft rounded-xl px-4 h-12 text-base font-medium"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -1164,7 +1178,7 @@ export default function BookingForm({
           <Button
             type="button"
             onClick={nextStep}
-            className="bg-blue-600 hover:bg-slate-800 text-white rounded-xl px-6 h-12 text-base font-semibold shadow-lg shadow-slate-200 transition-all hover:scale-105 active:scale-95"
+            className="bg-paw-primary hover:bg-paw-dark text-white rounded-xl px-6 h-12 text-base font-semibold shadow-lg shadow-orange-200 transition-all hover:scale-105 active:scale-95"
           >
             Next
             <ArrowRight className="w-4 h-4 ml-2" />
