@@ -157,7 +157,7 @@ export function DashboardClient({
     }
   }, [showSuccess]);
 
-  const role = profile?.role === "doctor" ? "doctor" : "patient";
+  const role = profile?.role === "veterinarian" ? "doctor" : "pet_owner";
   const userName =
     profile?.full_name || user.user_metadata?.full_name || "User";
   const capitalizedUserName = userName
@@ -1145,7 +1145,7 @@ export function DashboardClient({
       )}
 
       {/* ai chat panel */}
-      {role === "patient" && <AiChatPanel />}
+      {role === "pet_owner" && <AiChatPanel />}
     </div>
   );
 }
