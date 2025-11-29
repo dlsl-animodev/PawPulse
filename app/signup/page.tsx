@@ -30,8 +30,8 @@ function SubmitButton({ isUpgrade }: { isUpgrade: boolean }) {
           ? "Completing account..."
           : "Creating account..."
         : isUpgrade
-          ? "Complete Account"
-          : "Create Account"}
+        ? "Complete Account"
+        : "Create Account"}
     </Button>
   );
 }
@@ -46,6 +46,12 @@ const specialties = [
   "Neurology",
   "Ophthalmology",
   "Dentistry",
+];
+
+const pharmacies = [
+  "Mercury Drug - Multiple Branches Nationwide",
+  "Watsons Pharmacy - SM Megamall, Mandaluyong",
+  "Rose Pharmacy - Ayala Center, Makati",
 ];
 
 // helper function to get prefill data from localStorage
@@ -75,7 +81,9 @@ function getGuestPrefillData(): { fullName: string; email: string } {
 
 function SignupForm() {
   const [error, setError] = useState<string | null>(null);
-  const [role, setRole] = useState<"patient" | "doctor">("patient");
+  const [role, setRole] = useState<"patient" | "doctor" | "pharmacist">(
+    "patient"
+  );
   const [isAnonymous, setIsAnonymous] = useState(false);
   const fullNameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -171,7 +179,7 @@ function SignupForm() {
           </div>
           <div className="space-y-2">
             <Label>I am a</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setRole("patient")}
@@ -196,8 +204,21 @@ function SignupForm() {
                 <div className="font-semibold">Doctor</div>
                 <div className="text-xs text-gray-500">Manage patients</div>
               </button>
+              <button
+                type="button"
+                onClick={() => setRole("pharmacist")}
+                className={`p-3 rounded-lg border-2 text-center transition-all hover:cursor-pointer ${
+                  role === "pharmacist"
+                    ? "border-blue-600 bg-blue-50 text-blue-700"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <div className="font-semibold">Pharmacist</div>
+                <div className="text-xs text-gray-500">Manage medications</div>
+              </button>
             </div>
           </div>
+
           {role === "doctor" && (
             <div className="space-y-2">
               <Label htmlFor="specialty">Specialty</Label>
