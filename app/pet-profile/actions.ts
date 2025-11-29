@@ -25,3 +25,35 @@ export async function getPetById(petId: string) {
     return null;
   }
 }
+
+export async function fetchAllPets() {
+  const supabase = await createClient();
+
+  // get current user from Supabase auth; only return pets owned by this user
+  try {
+    const { data: { user } = { user: null } } = await supabase.auth.getUser();
+
+    if (!user) {
+      // no logged in user -> return empty list
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("pets")
+      .select(
+        "id, name, species, breed, gender, weight_kg, profile_image_url, notes, created_at"
+      )
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("fetchAllPets error:", error);
+      return [];
+    }
+
+    return data ?? [];
+  } catch (err) {
+    console.error("fetchAllPets unexpected error:", err);
+    return [];
+  }
+}

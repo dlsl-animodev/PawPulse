@@ -5,11 +5,12 @@ import { createClient } from "@/utils/supabase/server";
 export default async function PetProfilePage({
   searchParams,
 }: {
-  searchParams?: { petId?: string };
+  searchParams: Promise<{ petId?: string }>;
 }) {
-  const petId = searchParams?.petId;
+  const petId = (await searchParams).petId;
   if (!petId) {
-    return <div className="p-6 text-red-500">No petId provided.</div>;
+    return <div className="p-6 text-red-500">No petId provided. 
+    </div>;
   }
 
   const data = await getPetById(petId);
