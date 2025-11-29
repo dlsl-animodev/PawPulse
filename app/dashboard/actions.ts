@@ -8,7 +8,7 @@ export async function getDashboardData() {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return { patientAppointments: [], prescriptions: [], medicationOrders: [], reminders: [], doctorAppointments: [], profile: null, doctorProfile: null, user: null }
+    return { ownerAppointments: [], prescriptions: [], medicationOrders: [], reminders: [], vetAppointments: [], profile: null, vetProfile: null, user: null }
   }
 
   const { data: profile } = await supabase
@@ -17,106 +17,162 @@ export async function getDashboardData() {
     .eq('id', user.id)
     .maybeSingle()
 
-  // patient view
-  if (profile?.role !== 'doctor') {
+  // pet owner view
+  if (profile?.role !== 'veterinarian') {
     const { data: appointments } = await supabase
       .from('appointments')
       .select(`
         *,
-        doctors (
+        veterinarians (
           name,
           specialty,
           image_url
+        ),
+        pets (
+          id,
+          name,
+          species
         )
       `)
-      .eq('patient_id', user.id)
-      .order('date', { ascending: true })
+      .eq('owner_id', user.id)
+      .order('scheduled_at', { ascending: true })
 
     const { data: prescriptions } = await supabase
       .from('prescriptions')
-      .select('*')
-      .eq('patient_id', user.id)
+      .select(`
+        *,
+        pets (
+          id,
+          name,
+          species
+        )
+      `)
+      .eq('owner_id', user.id)
       .order('created_at', { ascending: false })
 
     // fetch medication orders
     const { data: medicationOrders } = await supabase
       .from('medication_orders')
-      .select('*')
-      .eq('patient_id', user.id)
+      .select(`
+        *,
+        pets (
+          id,
+          name
+        )
+      `)
+      .eq('owner_id', user.id)
       .order('ordered_at', { ascending: false })
 
     // fetch reminders
     const { data: reminders } = await supabase
       .from('reminders')
+      .select(`
+        *,
+        pets (
+          id,
+          name
+        )
+      `)
+      .eq('owner_id', user.id)
+      .eq('is_read', false)
+      .order('remind_at', { ascending: true })
+
+    // fetch user's pets
+    const { data: pets } = await supabase
+      .from('pets')
       .select('*')
-      .eq('patient_id', user.id)
+      .eq('owner_id', user.id)
       .eq('is_active', true)
-      .order('time', { ascending: true })
+      .order('name')
 
     // get the most recent appointment for ai context
     const latestAppointment = appointments?.[0] || null
 
     return {
-      patientAppointments: appointments || [],
+      ownerAppointments: appointments || [],
       prescriptions: prescriptions || [],
       medicationOrders: medicationOrders || [],
       reminders: reminders || [],
-      doctorAppointments: [],
-      doctorProfile: null,
+      pets: pets || [],
+      vetAppointments: [],
+      vetProfile: null,
       profile,
       user,
       latestAppointment,
+      // backwards compatibility
+      patientAppointments: appointments || [],
+      doctorAppointments: [],
+      doctorProfile: null,
     }
   }
 
-  // doctor view - look up doctor by user_id (proper link)
-  const { data: doctorProfile } = await supabase
-    .from('doctors')
-    .select('*')
+  // veterinarian view - look up vet by user_id
+  const { data: vetProfile } = await supabase
+    .from('veterinarians')
+    .select(`
+      *,
+      vet_clinics (
+        id,
+        name,
+        city
+      )
+    `)
     .eq('user_id', user.id)
     .maybeSingle()
 
-  const doctorId = doctorProfile?.id
+  const vetId = vetProfile?.id
 
-  const { data: doctorAppointments } = doctorId
+  const { data: vetAppointments } = vetId
     ? await supabase
         .from('appointments')
         .select(`
           *,
-          patient:patient_id (
+          owner:owner_id (
             id,
             full_name,
             email
           ),
-          doctors (
+          pets (
+            id,
+            name,
+            species,
+            breed,
+            weight_kg
+          ),
+          veterinarians (
             name,
             specialty
           )
         `)
-        .eq('doctor_id', doctorId)
-        .order('date', { ascending: true })
+        .eq('veterinarian_id', vetId)
+        .order('scheduled_at', { ascending: true })
     : { data: [] }
 
   return {
-    patientAppointments: [],
+    ownerAppointments: [],
     prescriptions: [],
     medicationOrders: [],
     reminders: [],
-    doctorAppointments: doctorAppointments || [],
-    doctorProfile: doctorProfile || null,
+    pets: [],
+    vetAppointments: vetAppointments || [],
+    vetProfile: vetProfile || null,
     profile,
     user,
     latestAppointment: null,
+    // backwards compatibility
+    patientAppointments: [],
+    doctorAppointments: vetAppointments || [],
+    doctorProfile: vetProfile || null,
   }
 }
 
-// doctor actions
-export async function addAppointmentNotes(appointmentId: string, notes: string) {
+// veterinarian actions
+export async function addAppointmentNotes(appointmentId: string, vetNotes: string) {
   const supabase = await createClient()
 
   const { error } = await supabase
     .from('appointments')
-    .update({ notes, status: 'completed' })
+    .update({ vet_notes: vetNotes, status: 'completed' })
     .eq('id', appointmentId)
 
   if (error) {
@@ -128,10 +184,15 @@ export async function addAppointmentNotes(appointmentId: string, notes: string) 
 }
 
 export async function createPrescription(data: {
-  patientId: string
+  petId: string
+  ownerId: string
+  appointmentId?: string
   medicationName: string
   dosage: string
   instructions: string
+  petWeightKg?: number
+  frequency?: string
+  duration?: string
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -140,23 +201,28 @@ export async function createPrescription(data: {
     return { error: 'Not authenticated' }
   }
 
-  // get doctor id
-  const { data: doctor } = await supabase
-    .from('doctors')
+  // get veterinarian id
+  const { data: vet } = await supabase
+    .from('veterinarians')
     .select('id')
     .eq('user_id', user.id)
     .single()
 
-  if (!doctor) {
-    return { error: 'Doctor profile not found' }
+  if (!vet) {
+    return { error: 'Veterinarian profile not found' }
   }
 
   const { error } = await supabase.from('prescriptions').insert({
-    patient_id: data.patientId,
-    doctor_id: doctor.id,
+    pet_id: data.petId,
+    owner_id: data.ownerId,
+    veterinarian_id: vet.id,
+    appointment_id: data.appointmentId || null,
     medication_name: data.medicationName,
     dosage: data.dosage,
     instructions: data.instructions,
+    pet_weight_kg: data.petWeightKg || null,
+    frequency: data.frequency || null,
+    duration: data.duration || null,
     status: 'active',
     refills_remaining: 3,
   })
@@ -170,7 +236,7 @@ export async function createPrescription(data: {
 }
 
 // medication ordering
-export async function orderMedication(prescriptionId: string, medicationName: string) {
+export async function orderMedication(prescriptionId: string, medicationName: string, petId?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -179,7 +245,8 @@ export async function orderMedication(prescriptionId: string, medicationName: st
   }
 
   const { error } = await supabase.from('medication_orders').insert({
-    patient_id: user.id,
+    owner_id: user.id,
+    pet_id: petId || null,
     prescription_id: prescriptionId,
     medication_name: medicationName,
     quantity: 1,
@@ -204,8 +271,14 @@ export async function getMedicationOrders() {
 
   const { data: orders } = await supabase
     .from('medication_orders')
-    .select('*')
-    .eq('patient_id', user.id)
+    .select(`
+      *,
+      pets (
+        id,
+        name
+      )
+    `)
+    .eq('owner_id', user.id)
     .order('ordered_at', { ascending: false })
 
   return orders || []
