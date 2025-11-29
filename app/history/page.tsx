@@ -16,7 +16,7 @@ export default async function HistoryPage() {
       <div className="container mx-auto py-12 px-4 max-w-4xl">
         {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
             Past Consultations
           </h1>
           <p className="text-gray-600">
@@ -26,9 +26,9 @@ export default async function HistoryPage() {
 
         {pastAppointments.length === 0 ? (
           <div className="text-center py-20">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 mb-4">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-orange-100 mb-4">
               <svg
-                className="w-10 h-10 text-blue-600"
+                className="w-10 h-10 text-orange-700"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
