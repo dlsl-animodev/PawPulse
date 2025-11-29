@@ -23,7 +23,7 @@ export default async function PetProfilePage({
 }
 
 async function getPetById(petId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     // fetch pet
