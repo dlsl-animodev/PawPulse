@@ -204,17 +204,37 @@ export function AppointmentDetails({
   async function handleCreatePrescription() {
     if (!prescriptionData.medication.trim()) return;
     setIsSubmitting(true);
-    await createPrescription({
+
+    const result = await createPrescription({
       appointmentId: appointment.id,
       petId: appointment.pets?.id || "",
       ownerId: appointment.owner.id,
       medicationName: prescriptionData.medication,
       dosage: prescriptionData.dosage,
       instructions: prescriptionData.instructions,
-    });
-    setIsSubmitting(false);
+    });    setIsSubmitting(false);
     setShowPrescriptionModal(false);
     setPrescriptionData({ medication: "", dosage: "", instructions: "" });
+
+    if (result?.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success(`Prescription for ${prescriptionData.medication} created successfully`);
+
+    // send a chat message about the prescription if chat room is open
+    if (chatRoom?.id && chatRoom.status === "open") {
+      const prescriptionMessage = `New Prescription Created\n\nMedication: ${prescriptionData.medication}\nDosage: ${prescriptionData.dosage}${prescriptionData.instructions ? `\nInstructions: ${prescriptionData.instructions}` : ""}\n\nYou can order this medication from the pharmacy through your dashboard.`;
+
+      await supabase.from("chat_messages").insert({
+        room_id: chatRoom.id,
+        sender_id: currentUserId,
+        content: prescriptionMessage,
+      });
+    }
+
+    router.refresh();
   }
 
   async function handleCancelAppointment() {
