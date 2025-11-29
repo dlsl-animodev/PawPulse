@@ -1,4 +1,4 @@
-import BookingForm from "./[id]/booking-form";
+import BookingPageClient from "./booking-page-client";
 import { getDoctors } from "./actions";
 import { createClient } from "@/utils/supabase/server";
 
@@ -49,22 +49,9 @@ export default async function BookPage() {
   const doctors = await getDoctors();
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-blue-50 via-white to-white py-10 px-4">
-      <div className="max-w-5xl mx-auto space-y-10">
-        <div className="text-center space-y-3">
-          <p className="text-sm tracking-[0.35em] uppercase text-blue-500 font-semibold">
-            CareLink Booking
-          </p>
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900">
-            Schedule your next consultation
-          </h1>
-          <p className="text-base text-slate-500 max-w-2xl mx-auto">
-            Start by picking a date and time, tell us why you&apos;re visiting,
-            then choose from {doctors.length} trusted specialists.
-          </p>
-        </div>
-
-        <BookingForm
+    <div className="min-h-screen bg-linear-to-b from-blue-50 via-white to-white py-6 px-4">
+      <div className="max-w-5xl mx-auto">
+        <BookingPageClient
           doctors={doctors}
           contactInfo={contactInfo}
           isGuest={isGuest}

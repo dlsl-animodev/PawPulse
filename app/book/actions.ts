@@ -16,6 +16,14 @@ export type Doctor = {
   created_at: string;
 };
 
+export async function getGeminiApiKey() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set in environment variables");
+  }
+  return apiKey;
+}
+
 const createAppointmentSchema = z.object({
   doctorId: z.string().uuid({ message: "Choose a valid doctor." }),
   date: z.string().min(1, "Date is required."),
