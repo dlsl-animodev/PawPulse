@@ -66,7 +66,6 @@ function getLocalTimeKey(date: Date) {
   return `${hours}:${minutes}`;
 }
 
-// get available time slots for a given date, filtering out past times for today
 function getAvailableSlotsForDate(date: Date, now: Date): string[] {
   const isToday =
     date.getFullYear() === now.getFullYear() &&
@@ -77,21 +76,17 @@ function getAvailableSlotsForDate(date: Date, now: Date): string[] {
     return TIME_SLOTS;
   }
 
-  // for today, filter out slots that have already passed
   const currentHour = now.getHours();
   return TIME_SLOTS.filter((slot) => {
     const slotHour = Number(slot.split(":")[0]);
-    // slot must be at least 1 hour in the future
     return slotHour > currentHour;
   });
 }
 
-// check if a date has any available slots
 function hasAvailableSlots(date: Date, now: Date): boolean {
   return getAvailableSlotsForDate(date, now).length > 0;
 }
 
-// get the minimum selectable date (today if slots available, otherwise tomorrow)
 function getMinSelectableDate(now: Date): Date {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
@@ -100,7 +95,6 @@ function getMinSelectableDate(now: Date): Date {
     return today;
   }
 
-  // no slots available today, use tomorrow
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   return tomorrow;
@@ -162,7 +156,6 @@ function SubmitButton({
   );
 }
 
-// helper to get stored guest booking data from localStorage
 function getStoredBookingData() {
   if (typeof window === "undefined") return null;
   try {
@@ -196,13 +189,11 @@ export default function BookingForm({
   isGuest?: boolean;
   initialData?: BookingInitialData;
 }) {
-  // check for stored booking data (after guest signup flow)
   const storedBooking = useMemo(() => {
     if (isGuest) return null;
     return getStoredBookingData();
   }, [isGuest]);
 
-  // use current time for all time-based calculations
   const [now, setNow] = useState(() => new Date());
   const [error, setError] = useState<string | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(
@@ -217,7 +208,6 @@ export default function BookingForm({
     () => storedBooking?.booking?.petId || ""
   );
 
-  // editable contact info for guests
   const [guestContact, setGuestContact] = useState({
     firstName: contactInfo.firstName || "",
     lastName: contactInfo.lastName || "",
@@ -225,12 +215,10 @@ export default function BookingForm({
     phone: contactInfo.phone || "",
   });
 
-  // calculate minimum selectable date based on current time
   const minSelectableDate = useMemo(() => {
     return getMinSelectableDate(now);
   }, [now]);
 
-  // get initial date from stored data or use minimum selectable date
   const initialDate = useMemo(() => {
     if (storedBooking?.booking?.date) {
       const parsed = new Date(storedBooking.booking.date);
@@ -256,7 +244,7 @@ export default function BookingForm({
   const [takenTimes, setTakenTimes] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
-  // Stepper state
+  // Stepper state (1 = Pet, 2 = Specialist, 3 = Date & Time, 4 = Details, 5 = Contact (guest), 6 = Review)
   const [step, setStep] = useState(1);
 
   const [search, setSearch] = useState("");
@@ -272,7 +260,6 @@ export default function BookingForm({
   const supabase = useMemo(() => createBrowserClient(), []);
   useRouter();
 
-  // update "now" every minute to keep time slots current
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(new Date());
@@ -280,12 +267,10 @@ export default function BookingForm({
     return () => clearInterval(interval);
   }, []);
 
-  // get available slots for the selected date
   const availableSlots = useMemo(() => {
     return getAvailableSlotsForDate(selectedDate, now);
   }, [selectedDate, now]);
 
-  // computed check if selected time is still valid
   const isSelectedTimeAvailable = selectedTime
     ? availableSlots.includes(selectedTime)
     : true;
@@ -399,9 +384,7 @@ export default function BookingForm({
   );
 
   function handleDaySelect(day: Date) {
-    // check if day is in the past
     if (day < minSelectableDate) return;
-    // check if day has available slots
     if (!hasAvailableSlots(day, now)) return;
     setSelectedDate(new Date(day));
     setCurrentMonth(new Date(day.getFullYear(), day.getMonth(), 1));
@@ -417,8 +400,8 @@ export default function BookingForm({
     setSelectedTime("");
     setTakenTimes([]);
     setSlotsLoading(false);
-    // Auto advance to next step after selection
-    setTimeout(() => setStep(2), 300);
+    // Auto advance to Date & Time (step 3)
+    setTimeout(() => setStep(3), 300);
   }
 
   async function handleSubmit(formData: FormData) {
@@ -449,21 +432,19 @@ export default function BookingForm({
       return;
     }
 
-    // for guests, show registration prompt instead of trying to create appointment
     if (isGuest) {
-      const notes = (formData.get("notes") as string) || "";
+      const notesVal = (formData.get("notes") as string) || "";
       setPreConsultData({
-        notes,
+        notes: notesVal,
         doctorId: selectedDoctorId,
         date: dateFieldValue,
         time: selectedTime,
       });
 
-      // save guest contact info and booking data to localStorage for signup form
       const guestBookingData = {
         contact: guestContact,
         booking: {
-          notes,
+          notes: notesVal,
           doctorId: selectedDoctorId,
           petId: selectedPetId,
           date: dateFieldValue,
@@ -486,7 +467,6 @@ export default function BookingForm({
       setError(res.error);
       toast.error(res.error);
 
-      // handle anonymous user attempting to book
       if ("requiresRegistration" in res && res.requiresRegistration) {
         setRequiresRegistration(true);
         setRedirectUrl(
@@ -497,31 +477,41 @@ export default function BookingForm({
     }
   }
 
-  // Stepper Logic
+  // Updated steps: Pet -> Specialist -> Date & Time -> Details -> (Contact) -> Review
   const steps = [
-    { id: 1, title: "Specialist", icon: Stethoscope },
-    { id: 2, title: "Date & Time", icon: CalendarIcon },
-    { id: 3, title: "Details", icon: Sparkles },
-    ...(isGuest ? [{ id: 4, title: "Contact", icon: UserRound }] : []),
-    { id: isGuest ? 5 : 4, title: "Review", icon: Check },
+    { id: 1, title: "Pet", icon: UserRound },
+    { id: 2, title: "Specialist", icon: Stethoscope },
+    { id: 3, title: "Date & Time", icon: CalendarIcon },
+    { id: 4, title: "Details", icon: Sparkles },
+    ...(isGuest ? [{ id: 5, title: "Contact", icon: UserPlus }] : []),
+    { id: isGuest ? 6 : 5, title: "Review", icon: Check },
   ];
 
   const totalSteps = steps.length;
+  const contactStepIndex = useMemo(
+    () => steps.findIndex((s) => s.title === "Contact") + 1,
+    [steps]
+  );
 
   const nextStep = () => {
-    if (step === 1 && !selectedDoctorId) {
+    // validations now mapped to logical step numbers
+    if (step === 1 && !selectedPetId) {
+      toast.error("Please select a pet to continue");
+      return;
+    }
+    if (step === 2 && !selectedDoctorId) {
       toast.error("Please select a specialist to continue");
       return;
     }
-    if (step === 2 && (!selectedDate || !selectedTime)) {
+    if (step === 3 && (!selectedDate || !selectedTime)) {
       toast.error("Please select a date and time");
       return;
     }
-    if (step === 3 && !notes.trim()) {
+    if (step === 4 && !notes.trim()) {
       toast.error("Please describe your reason for visit");
       return;
     }
-    if (isGuest && step === 4) {
+    if (contactStepIndex && step === contactStepIndex) {
       if (
         !guestContact.firstName ||
         !guestContact.lastName ||
@@ -531,6 +521,7 @@ export default function BookingForm({
         return;
       }
     }
+
     setStep((s) => Math.min(s + 1, totalSteps));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -542,9 +533,7 @@ export default function BookingForm({
 
   // show registration prompt for guests
   if (requiresRegistration) {
-    const selectedDoctor = doctors.find(
-      (d) => d.id === preConsultData?.doctorId
-    );
+    const selDoc = doctors.find((d) => d.id === preConsultData?.doctorId);
     return (
       <div className="rounded-3xl border border-blue-100 bg-white/70 backdrop-blur-sm p-8 shadow-sm max-w-xl mx-auto">
         <div className="text-center space-y-6">
@@ -561,17 +550,15 @@ export default function BookingForm({
             </p>
           </div>
 
-          {/* show saved consultation details */}
           {preConsultData && (
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-left max-w-md mx-auto">
               <p className="text-sm font-medium text-blue-900 mb-2">
                 Saved consultation details:
               </p>
               <div className="space-y-1 text-sm text-blue-800">
-                {selectedDoctor && (
+                {selDoc && (
                   <p>
-                    Doctor:{" "}
-                    <span className="font-medium">{selectedDoctor.name}</span>
+                    Doctor: <span className="font-medium">{selDoc.name}</span>
                   </p>
                 )}
                 <p>
@@ -627,6 +614,21 @@ export default function BookingForm({
     );
   }
 
+  // Header (dynamic based on current step)
+  const headerTitle = steps[step - 1]?.title || "Schedule";
+  const headerSubtitle =
+    headerTitle === "Pet"
+      ? "Select which pet this booking is for."
+      : headerTitle === "Specialist"
+      ? `Choose from ${doctors.length} trusted specialists.`
+      : headerTitle === "Date & Time"
+      ? "Pick a convenient date and time."
+      : headerTitle === "Details"
+      ? "Tell us why you're coming in."
+      : headerTitle === "Contact"
+      ? "Enter contact details to complete booking."
+      : "Review and confirm your booking.";
+
   return (
     <form
       action={handleSubmit}
@@ -662,20 +664,18 @@ export default function BookingForm({
         </div>
       )}
 
-      {/* Header - Only visible on Step 1 */}
-      {step === 1 && (
-        <div className="text-center space-y-3 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <p className="text-xs tracking-[0.3em] uppercase text-blue-500 font-bold">
-            CareLink Booking
-          </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
-            Schedule your consultation
-          </h1>
-          <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
-            Choose from {doctors.length} trusted specialists to get started.
-          </p>
-        </div>
-      )}
+      {/* Dynamic Header */}
+      <div className="text-center space-y-3 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <p className="text-xs tracking-[0.3em] uppercase text-blue-500 font-bold">
+          Paw Pulse
+        </p>
+        <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
+          {headerTitle}
+        </h1>
+        <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
+          {headerSubtitle}
+        </p>
+      </div>
 
       {/* Modern Segmented Stepper */}
       <div className="mb-8 sticky top-0 z-20 bg-white/80 backdrop-blur-md py-4 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent md:backdrop-blur-none transition-all">
@@ -712,10 +712,9 @@ export default function BookingForm({
       </div>
 
       <div className="min-h-[300px]">
-        {/* Step 1: Doctor Selection */}
+        {/* Step 1: Pet Selection */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
-            {/* Pet selection: choose a pet first */}
             <div className="mb-4">
               <h3 className="text-sm font-medium text-slate-600 mb-2">
                 Select Pet
@@ -773,7 +772,12 @@ export default function BookingForm({
                 </div>
               )}
             </div>
+          </div>
+        )}
 
+        {/* Step 2: Doctor Selection */}
+        {step === 2 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <div className="flex flex-col md:flex-row gap-3 mb-2">
               <div className="relative flex-1">
                 <Input
@@ -884,8 +888,8 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* Step 2: Date & Time */}
-        {step === 2 && (
+        {/* Step 3: Date & Time */}
+        {step === 3 && (
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <Label className="text-base font-semibold text-slate-900 ml-1">
@@ -1015,8 +1019,8 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* Step 3: Details */}
-        {step === 3 && (
+        {/* Step 4: Details */}
+        {step === 4 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <div className="bg-white rounded-3xl border border-slate-200 p-1 shadow-sm">
               <Textarea
@@ -1038,8 +1042,8 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* Step 4: Contact (Guest Only) */}
-        {isGuest && step === 4 && (
+        {/* Step 5: Contact (Guest Only) */}
+        {isGuest && step === 5 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -1100,11 +1104,10 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* Step 5 (or 4): Review */}
+        {/* Review */}
         {step === totalSteps && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm divide-y divide-slate-100">
-              {/* Doctor Summary */}
               <div className="p-5 flex items-center gap-4">
                 <div className="h-14 w-14 rounded-xl overflow-hidden bg-blue-50 shrink-0">
                   <Image
@@ -1131,13 +1134,12 @@ export default function BookingForm({
                   variant="ghost"
                   size="sm"
                   className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(2)}
                 >
                   Change
                 </Button>
               </div>
 
-              {/* Date & Time Summary */}
               <div className="p-5 flex items-center gap-4">
                 <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
                   <CalendarIcon className="h-5 w-5" />
@@ -1159,13 +1161,12 @@ export default function BookingForm({
                   variant="ghost"
                   size="sm"
                   className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                 >
                   Change
                 </Button>
               </div>
 
-              {/* Notes Summary */}
               <div className="p-5 flex items-start gap-4">
                 <div className="h-10 w-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0 text-purple-600">
                   <Info className="h-5 w-5" />
@@ -1181,13 +1182,12 @@ export default function BookingForm({
                   variant="ghost"
                   size="sm"
                   className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
-                  onClick={() => setStep(3)}
+                  onClick={() => setStep(4)}
                 >
                   Edit
                 </Button>
               </div>
 
-              {/* Guest Contact Summary */}
               {isGuest && (
                 <div className="p-5 flex items-center gap-4">
                   <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0 text-amber-600">
@@ -1209,7 +1209,7 @@ export default function BookingForm({
                     variant="ghost"
                     size="sm"
                     className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
-                    onClick={() => setStep(4)}
+                    onClick={() => setStep(contactStepIndex || totalSteps - 1)}
                   >
                     Edit
                   </Button>
@@ -1233,7 +1233,7 @@ export default function BookingForm({
             Back
           </Button>
         ) : (
-          <div></div> // Spacer
+          <div />
         )}
 
         {step < totalSteps ? (
