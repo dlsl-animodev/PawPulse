@@ -1,12 +1,12 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 type ClientOptions = {
-  guestToken?: string
-}
+  guestToken?: string;
+};
 
 export async function createClient(options: ClientOptions = {}) {
-  const cookieStore = await cookies()
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,11 +14,11 @@ export async function createClient(options: ClientOptions = {}) {
     {
       cookies: {
         get(name: string) {
-          return cookieStore.get(name)?.value
+          return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
           try {
-            cookieStore.set({ name, value, ...options })
+            cookieStore.set({ name, value, ...options });
           } catch {
             // The `set` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing
@@ -27,7 +27,7 @@ export async function createClient(options: ClientOptions = {}) {
         },
         remove(name: string, options: CookieOptions) {
           try {
-            cookieStore.set({ name, value: '', ...options })
+            cookieStore.set({ name, value: "", ...options });
           } catch {
             // The `delete` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing
@@ -38,10 +38,10 @@ export async function createClient(options: ClientOptions = {}) {
       global: options.guestToken
         ? {
             headers: {
-              'x-guest-token': options.guestToken,
+              "x-guest-token": options.guestToken,
             },
           }
         : undefined,
     }
-  )
+  );
 }

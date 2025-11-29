@@ -1,11 +1,12 @@
-"use client";
-
 import { PetRegisterForm } from "@/components/pet-register-form";
+import { registerPet } from "./action";
 import Link from "next/link";
 
 export default function RegisterPetPage() {
-  async function handleSubmit(values: any) {
-    console.log("Validated pet:", values);
+  // Wrap the server action
+  async function handleRegisterPet(formData: FormData) {
+    "use server";
+    return await registerPet(formData);
   }
 
   return (
@@ -21,7 +22,7 @@ export default function RegisterPetPage() {
         <p className="text-sm text-gray-600 mb-6">
           Register your pet to manage appointments and medical records.
         </p>
-        <PetRegisterForm onSubmit={handleSubmit} />
+        <PetRegisterForm registerAction={handleRegisterPet} />
       </div>
     </div>
   );
