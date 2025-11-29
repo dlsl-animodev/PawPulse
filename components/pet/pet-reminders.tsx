@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { Pet } from "@/lib/types/pet";
@@ -9,59 +8,17 @@ import {
   Plus,
   ChevronRight,
 } from "lucide-react";
+import { fetchAllPets } from "@/app/pet-profile/actions";
 
-const myPets: Pet[] = [
-  {
-    id: "p1",
-    name: "Barnaby",
-    breed: "Golden Retriever",
-    color: "Golden",
-    gender: "Male",
-    weight_kg: 30,
-    notes: "Loves to play fetch and swim.",
-    owner_id: "owner123",
-    is_active: true,
-    species: "Dog",
-    age: 4,
-    profile_image_url:
-      "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=400&h=400&fit=crop",
-    nextCheckup: "Oct 24, 2023",
-  },
-  {
-    id: "p2",
-    name: "Luna",
-    breed: "Siamese",
-    color: "Cream & Brown",
-    gender: "Female",
-    weight_kg: 4,
-    notes: "Very affectionate and vocal.",
-    owner_id: "owner123",
-    is_active: true,
-    species: "Cat",
-    age: 2,
-    profile_image_url:
-      "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop",
-    nextCheckup: "Nov 12, 2023",
-  },
-  {
-    id: "p3",
-    name: "Coco",
-    breed: "Parakeet",
-    color: "Green & Yellow",
-    gender: "Female",
-    weight_kg: 0.1,
-    notes: "Enjoys singing and being around people.",
-    owner_id: "owner123",
-    is_active: true,
-    species: "Bird",
-    age: 1,
-    profile_image_url:
-      "https://images.unsplash.com/photo-1552728089-57bdde30beb3?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy",
-    nextCheckup: "Dec 01, 2023",
-  },
-];
+type Reminder = {
+  id: string;
+  title: string;
+  date: string;
+  type: "medication" | "vaccine" | string;
+  petId: string;
+};
 
-const reminders: any[] = [
+const reminders: Reminder[] = [
   {
     id: "r1",
     title: "Heartworm Pill",
@@ -107,6 +64,8 @@ export async function Reminders() {
       </section>
     );
   }
+  // fetch pets for the current user (server-side)
+  const pets: Pet[] = await fetchAllPets();
 
   return (
     <section className="py-8 relative">
@@ -125,7 +84,7 @@ export async function Reminders() {
 
             <div className="flex gap-4 overflow-x-auto pb-6 snap-x scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
               {/* Add Pet Button */}
-              <div className="flex-shrink-0 snap-start">
+              <Link href="/register-pet" className="flex-shrink-0 snap-start">
                 <button className="w-20 h-24 sm:w-28 sm:h-32 rounded-[2rem] border-2 border-dashed border-paw-primary/40 flex flex-col items-center justify-center text-paw-primary hover:bg-paw-soft transition-colors gap-2 group">
                   <div className="bg-orange-100 p-2 rounded-full group-hover:scale-110 transition-transform">
                     <Plus size={24} />
@@ -134,9 +93,9 @@ export async function Reminders() {
                     Add
                   </span>
                 </button>
-              </div>
+              </Link>
 
-              {myPets.map((pet) => (
+              {pets.map((pet) => (
                 <div
                   key={pet.id}
                   className="flex-shrink-0 snap-start group cursor-pointer relative w-20 sm:w-28"
@@ -218,7 +177,7 @@ export async function Reminders() {
                         {rem.date}
                       </span>
                       <span className="text-sm text-paw-text font-medium">
-                        • For {myPets.find((p) => p.id === rem.petId)?.name}
+                        • For {pets.find((p: Pet) => p.id === rem.petId)?.name}
                       </span>
                     </div>
                   </div>
