@@ -101,6 +101,243 @@ interface AppointmentDetailsProps {
   chatMessages: ChatMessage[];
 }
 
+interface ChatInterfaceProps {
+  messages: ChatMessage[];
+  currentUserId: string;
+  chatPartnerName: string;
+  messageInput: string;
+  setMessageInput: (val: string) => void;
+  handleSendMessage: () => void;
+  isSending: boolean;
+  isMobileFullPage?: boolean;
+  onClose?: () => void;
+}
+
+function ChatInterface({
+  messages,
+  currentUserId,
+  chatPartnerName,
+  messageInput,
+  setMessageInput,
+  handleSendMessage,
+  isSending,
+  isMobileFullPage,
+  onClose,
+}: ChatInterfaceProps) {
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+
+  useEffect(() => {
+    if (!autoScrollEnabled) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, autoScrollEnabled]);
+
+  function handleMessagesScroll() {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    setAutoScrollEnabled(distanceFromBottom < 64);
+  }
+
+  return (
+    <div className={`flex flex-col ${isMobileFullPage ? "h-full" : "h-112"}`}>
+      {isMobileFullPage && (
+        <div className="flex items-center justify-between p-4 border-b bg-white">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-paw-primary" />
+            <span className="font-bold text-gray-900">
+              Chat with {chatPartnerName}
+            </span>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
+
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
+        className={`flex-1 overflow-y-auto space-y-4 ${
+          isMobileFullPage ? "p-4" : "pr-2"
+        }`}
+      >
+        {messages.length === 0 ? (
+          <div className="text-center text-gray-500 mt-6">
+            No messages yet. Say hello to start the conversation.
+          </div>
+        ) : (
+          messages.map((message, index) => {
+            // Check for prescription message first
+            if (message.content.startsWith("New Prescription Created")) {
+              const lines = message.content.split("\n");
+              const medication =
+                lines
+                  .find((l) => l.startsWith("Medication:"))
+                  ?.replace("Medication: ", "") || "Unknown Medication";
+              const dosage =
+                lines
+                  .find((l) => l.startsWith("Dosage:"))
+                  ?.replace("Dosage: ", "") || "";
+              const instructions =
+                lines
+                  .find((l) => l.startsWith("Instructions:"))
+                  ?.replace("Instructions: ", "") || "";
+
+              return (
+                <div
+                  key={message.id}
+                  className="flex justify-center w-full my-6"
+                >
+                  <div className="bg-white border-2 border-paw-primary/20 rounded-2xl p-4 max-w-[85%] sm:max-w-sm w-full shadow-sm">
+                    <div className="flex items-center justify-center gap-2 mb-3 text-paw-primary font-bold border-b border-paw-primary/10 pb-2">
+                      <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
+                        <Pill className="h-4 w-4" />
+                      </div>
+                      <span>New Prescription</span>
+                    </div>
+
+                    <div className="space-y-3 mb-4 text-center">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+                          Medication
+                        </p>
+                        <p className="font-bold text-gray-900 text-lg">
+                          {medication}
+                        </p>
+                      </div>
+
+                      {dosage && (
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
+                            Dosage
+                          </p>
+                          <p className="text-sm text-gray-700">{dosage}</p>
+                        </div>
+                      )}
+
+                      {instructions && (
+                        <div className="bg-gray-50 p-2 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-1">
+                            Instructions
+                          </p>
+                          <p className="text-xs text-gray-700 italic">
+                            "{instructions}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <Link
+                      href={`/dashboard?tab=prescriptions`}
+                      className="block"
+                    >
+                      <Button className="w-full bg-paw-primary hover:bg-paw-primaryDark text-white shadow-md hover:shadow-lg transition-all rounded-xl hover:cursor-pointer">
+                        Order from Pharmacy
+                      </Button>
+                    </Link>
+
+                    <div className="text-center mt-3 text-[10px] text-gray-400">
+                      Prescribed at{" "}
+                      {new Date(message.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            const isOwnMessage = message.sender_id === currentUserId;
+            const prevMessage = messages[index - 1];
+            const nextMessage = messages[index + 1];
+
+            const isFirstInGroup =
+              !prevMessage ||
+              prevMessage.sender_id !== message.sender_id ||
+              prevMessage.content.startsWith("New Prescription Created");
+            const isLastInGroup =
+              !nextMessage ||
+              nextMessage.sender_id !== message.sender_id ||
+              nextMessage.content.startsWith("New Prescription Created");
+
+            let roundedClasses = "rounded-2xl";
+            if (isOwnMessage) {
+              if (!isFirstInGroup) roundedClasses += " rounded-tr-sm";
+              if (!isLastInGroup) roundedClasses += " rounded-br-sm";
+            } else {
+              if (!isFirstInGroup) roundedClasses += " rounded-tl-sm";
+              if (!isLastInGroup) roundedClasses += " rounded-bl-sm";
+            }
+
+            return (
+              <div
+                key={message.id}
+                className={`flex ${
+                  isOwnMessage ? "justify-end" : "justify-start"
+                } ${!isLastInGroup ? "mb-1" : "mb-4"}`}
+              >
+                <div
+                  className={`max-w-[75%] px-4 py-3 text-sm whitespace-pre-line ${roundedClasses} ${
+                    isOwnMessage
+                      ? "bg-paw-primary text-white"
+                      : "bg-gray-100 text-gray-900"
+                  }`}
+                >
+                  <p>{message.content}</p>
+                  <div
+                    className={`mt-1 text-[11px] ${
+                      isOwnMessage ? "text-white/70" : "text-gray-500"
+                    }`}
+                  >
+                    {isOwnMessage ? "You" : chatPartnerName} •{" "}
+                    {new Date(message.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleSendMessage();
+        }}
+        className={`flex gap-3 ${
+          isMobileFullPage ? "p-4 border-t bg-white" : "mt-4"
+        }`}
+      >
+        <Input
+          value={messageInput}
+          onChange={(event) => setMessageInput(event.target.value)}
+          placeholder={`Message ${chatPartnerName}`}
+          disabled={isSending}
+          className="rounded-2xl"
+        />
+        <Button
+          type="submit"
+          disabled={!messageInput.trim() || isSending}
+          className="shrink-0 bg-paw-primary hover:bg-paw-primaryDark hover:cursor-pointer"
+        >
+          {isSending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 export function AppointmentDetails({
   appointment,
   prescriptions,
@@ -123,9 +360,7 @@ export function AppointmentDetails({
   const [messages, setMessages] = useState<ChatMessage[]>(chatMessages);
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const router = useRouter();
   const supabase = useMemo(() => createBrowserClient(), []);
 
@@ -142,7 +377,7 @@ export function AppointmentDetails({
   const statusColors: Record<string, string> = {
     scheduled: "bg-yellow-100 text-yellow-800",
     pending: "bg-yellow-100 text-yellow-800",
-    confirmed: "bg-blue-100 text-blue-800",
+    confirmed: "bg-orange-100 text-orange-800",
     completed: "bg-green-100 text-green-800",
     cancelled: "bg-red-100 text-red-800",
   };
@@ -181,19 +416,6 @@ export function AppointmentDetails({
     };
   }, [chatRoom?.id, supabase]);
 
-  useEffect(() => {
-    if (!autoScrollEnabled) return;
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, autoScrollEnabled]);
-
-  function handleMessagesScroll() {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-    setAutoScrollEnabled(distanceFromBottom < 64);
-  }
-
   async function handleSaveNotes() {
     setIsSubmitting(true);
     await addAppointmentNotes(appointment.id, notes);
@@ -212,7 +434,8 @@ export function AppointmentDetails({
       medicationName: prescriptionData.medication,
       dosage: prescriptionData.dosage,
       instructions: prescriptionData.instructions,
-    });    setIsSubmitting(false);
+    });
+    setIsSubmitting(false);
     setShowPrescriptionModal(false);
     setPrescriptionData({ medication: "", dosage: "", instructions: "" });
 
@@ -221,11 +444,19 @@ export function AppointmentDetails({
       return;
     }
 
-    toast.success(`Prescription for ${prescriptionData.medication} created successfully`);
+    toast.success(
+      `Prescription for ${prescriptionData.medication} created successfully`
+    );
 
     // send a chat message about the prescription if chat room is open
     if (chatRoom?.id && chatRoom.status === "open") {
-      const prescriptionMessage = `New Prescription Created\n\nMedication: ${prescriptionData.medication}\nDosage: ${prescriptionData.dosage}${prescriptionData.instructions ? `\nInstructions: ${prescriptionData.instructions}` : ""}\n\nYou can order this medication from the pharmacy through your dashboard.`;
+      const prescriptionMessage = `New Prescription Created\n\nMedication: ${
+        prescriptionData.medication
+      }\nDosage: ${prescriptionData.dosage}${
+        prescriptionData.instructions
+          ? `\nInstructions: ${prescriptionData.instructions}`
+          : ""
+      }\n\nYou can order this medication from the pharmacy through your dashboard.`;
 
       await supabase.from("chat_messages").insert({
         room_id: chatRoom.id,
@@ -274,7 +505,6 @@ export function AppointmentDetails({
     }
 
     setMessageInput("");
-    setAutoScrollEnabled(true);
   }
 
   return (
@@ -298,7 +528,8 @@ export function AppointmentDetails({
                 </button>
               </div>
               <CardDescription>
-                Add notes for {appointment.pets?.name || appointment.owner.full_name}
+                Add notes for{" "}
+                {appointment.pets?.name || appointment.owner.full_name}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -311,7 +542,7 @@ export function AppointmentDetails({
               <Button
                 onClick={handleSaveNotes}
                 disabled={isSubmitting}
-                className="w-full hover:cursor-pointer"
+                className="w-full hover:cursor-pointer bg-paw-primary hover:bg-paw-primaryDark"
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -391,7 +622,7 @@ export function AppointmentDetails({
               <Button
                 onClick={handleCreatePrescription}
                 disabled={isSubmitting || !prescriptionData.medication}
-                className="w-full bg-blue-600 hover:bg-blue-700 hover:cursor-pointer"
+                className="w-full bg-paw-primary hover:bg-paw-primaryDark hover:cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -464,11 +695,28 @@ export function AppointmentDetails({
         </div>
       )}
 
+      {/* Mobile Chat Full Screen Modal */}
+      {isMobileChatOpen && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+          <ChatInterface
+            messages={messages}
+            currentUserId={currentUserId}
+            chatPartnerName={chatPartnerName}
+            messageInput={messageInput}
+            setMessageInput={setMessageInput}
+            handleSendMessage={handleSendMessage}
+            isSending={isSending}
+            isMobileFullPage={true}
+            onClose={() => setIsMobileChatOpen(false)}
+          />
+        </div>
+      )}
+
       {/* header */}
       <div className="mb-6">
         <Link
           href="/dashboard"
-          className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4 hover:cursor-pointer"
+          className="inline-flex items-center text-paw-primary hover:text-paw-primaryDark mb-4 hover:cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Dashboard
@@ -480,7 +728,9 @@ export function AppointmentDetails({
             </h1>
             <p className="text-gray-600">
               {isVeterinarian
-                ? `Pet: ${appointment.pets?.name || "Unknown"} (Owner: ${appointment.owner.full_name})`
+                ? `Pet: ${appointment.pets?.name || "Unknown"} (Owner: ${
+                    appointment.owner.full_name
+                  })`
                 : `With Dr. ${appointment.veterinarians.name}`}
             </p>
           </div>
@@ -501,15 +751,15 @@ export function AppointmentDetails({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-blue-600" />
+                <Calendar className="h-5 w-5 text-paw-primary" />
                 Appointment Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-blue-600" />
+                  <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                    <Calendar className="h-5 w-5 text-paw-primary" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Date</p>
@@ -549,11 +799,11 @@ export function AppointmentDetails({
               {/* veterinarian/owner info */}
               <div className="pt-4 border-t">
                 <div className="flex items-start gap-4">
-                  <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                  <div className="h-16 w-16 rounded-full bg-orange-100 flex items-center justify-center">
                     {isVeterinarian ? (
-                      <User className="h-8 w-8 text-blue-600" />
+                      <User className="h-8 w-8 text-paw-primary" />
                     ) : (
-                      <Stethoscope className="h-8 w-8 text-blue-600" />
+                      <Stethoscope className="h-8 w-8 text-paw-primary" />
                     )}
                   </div>
                   <div>
@@ -566,13 +816,14 @@ export function AppointmentDetails({
                         : `Dr. ${appointment.veterinarians.name}`}
                     </p>
                     {!isVeterinarian && (
-                      <p className="text-blue-600 font-medium">
+                      <p className="text-paw-primary font-medium">
                         {appointment.veterinarians.specialty}
                       </p>
                     )}
                     {isVeterinarian && appointment.pets && (
                       <p className="text-gray-600 mt-1">
-                        Pet: {appointment.pets.name} ({appointment.pets.species})
+                        Pet: {appointment.pets.name} ({appointment.pets.species}
+                        )
                       </p>
                     )}
                     {isVeterinarian && (
@@ -606,7 +857,7 @@ export function AppointmentDetails({
                       )}
                       <Button
                         onClick={() => setShowNotesModal(true)}
-                        className="hover:cursor-pointer"
+                        className="hover:cursor-pointer bg-paw-primary hover:bg-paw-primaryDark"
                       >
                         <FileText className="h-4 w-4 mr-2" />
                         Add Notes & Complete
@@ -640,7 +891,7 @@ export function AppointmentDetails({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
+                  <FileText className="h-5 w-5 text-paw-primary" />
                   Consultation Notes
                 </CardTitle>
               </CardHeader>
@@ -659,7 +910,7 @@ export function AppointmentDetails({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Pill className="h-5 w-5 text-blue-600" />
+                  <Pill className="h-5 w-5 text-paw-primary" />
                   Prescriptions
                 </CardTitle>
               </CardHeader>
@@ -670,8 +921,8 @@ export function AppointmentDetails({
                     className="flex items-start justify-between p-4 bg-gray-50 rounded-lg"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Pill className="h-5 w-5 text-blue-600" />
+                      <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        <Pill className="h-5 w-5 text-paw-primary" />
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900">
@@ -707,7 +958,7 @@ export function AppointmentDetails({
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-blue-600" />
+                <MessageCircle className="h-5 w-5 text-paw-primary" />
                 Care Chat
               </CardTitle>
               <CardDescription>
@@ -718,92 +969,39 @@ export function AppointmentDetails({
             <CardContent>
               {appointment.status !== "confirmed" ? (
                 <div className="border border-dashed border-yellow-200 bg-yellow-50 rounded-2xl p-4 text-sm text-yellow-800">
-                  Chat opens after the veterinarian confirms this appointment. You
-                  will receive an instant chat window here.
+                  Chat opens after the veterinarian confirms this appointment.
+                  You will receive an instant chat window here.
                 </div>
               ) : !chatRoom ? (
-                <div className="border border-dashed border-blue-200 bg-blue-50 rounded-2xl p-4 text-sm text-blue-800">
+                <div className="border border-dashed border-orange-200 bg-paw-soft rounded-2xl p-4 text-sm text-orange-800">
                   Setting up your chat room. Please refresh in a moment.
                 </div>
               ) : (
-                <div className="flex flex-col h-112">
-                  <div
-                    ref={messagesContainerRef}
-                    onScroll={handleMessagesScroll}
-                    className="flex-1 overflow-y-auto space-y-4 pr-2"
-                  >
-                    {messages.length === 0 ? (
-                      <div className="text-center text-gray-500 mt-6">
-                        No messages yet. Say hello to start the conversation.
-                      </div>
-                    ) : (
-                      messages.map((message) => {
-                        const isOwnMessage =
-                          message.sender_id === currentUserId;
-                        return (
-                          <div
-                            key={message.id}
-                            className={`flex ${
-                              isOwnMessage ? "justify-end" : "justify-start"
-                            }`}
-                          >
-                            <div
-                              className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm whitespace-pre-line ${
-                                isOwnMessage
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-gray-100 text-gray-900"
-                              }`}
-                            >
-                              <p>{message.content}</p>
-                              <div
-                                className={`mt-1 text-[11px] ${
-                                  isOwnMessage
-                                    ? "text-white/70"
-                                    : "text-gray-500"
-                                }`}
-                              >
-                                {isOwnMessage ? "You" : chatPartnerName} •{" "}
-                                {new Date(
-                                  message.created_at
-                                ).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-                  <form
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      handleSendMessage();
-                    }}
-                    className="mt-4 flex gap-3"
-                  >
-                    <Input
-                      value={messageInput}
-                      onChange={(event) => setMessageInput(event.target.value)}
-                      placeholder={`Message ${chatPartnerName}`}
-                      disabled={isSending}
-                      className="rounded-2xl"
-                    />
+                <>
+                  {/* Mobile Button */}
+                  <div className="lg:hidden">
                     <Button
-                      type="submit"
-                      disabled={!messageInput.trim() || isSending}
-                      className="shrink-0 bg-blue-600 hover:bg-blue-700 hover:cursor-pointer"
+                      onClick={() => setIsMobileChatOpen(true)}
+                      className="w-full bg-paw-primary hover:bg-paw-primaryDark hover:cursor-pointer"
                     >
-                      {isSending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Open Chat
                     </Button>
-                  </form>
-                </div>
+                  </div>
+
+                  {/* Desktop Chat */}
+                  <div className="hidden lg:block">
+                    <ChatInterface
+                      messages={messages}
+                      currentUserId={currentUserId}
+                      chatPartnerName={chatPartnerName}
+                      messageInput={messageInput}
+                      setMessageInput={setMessageInput}
+                      handleSendMessage={handleSendMessage}
+                      isSending={isSending}
+                    />
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -812,18 +1010,20 @@ export function AppointmentDetails({
         {/* sidebar */}
         <div className="space-y-6">
           {/* quick info card */}
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-paw-soft border-orange-200">
             <CardHeader>
-              <CardTitle className="text-blue-900">Quick Info</CardTitle>
+              <CardTitle className="text-orange-900">Quick Info</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-blue-600" />
-                <span className="text-blue-800">PetCare Veterinary Center</span>
+                <MapPin className="h-4 w-4 text-paw-primary" />
+                <span className="text-orange-800">
+                  PetCare Veterinary Center
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <span className="text-blue-800">Duration: ~30 minutes</span>
+                <Clock className="h-4 w-4 text-paw-primary" />
+                <span className="text-orange-800">Duration: ~30 minutes</span>
               </div>
             </CardContent>
           </Card>
