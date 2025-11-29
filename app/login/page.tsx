@@ -149,7 +149,7 @@ function LoginForm() {
             <Input id="password" name="password" type="password" required />
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
+        <CardFooter className="flex flex-col space-y-4 mt-4">
           <SubmitButton />
 
           <div className="relative w-full">
