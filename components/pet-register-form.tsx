@@ -86,7 +86,9 @@ export function PetRegisterForm({ onSubmit }: PetRegisterFormProps) {
               required
               placeholder="e.g., Bella"
             />
-            {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
+            {errors.name && (
+              <p className="text-sm text-red-600 mt-1">{errors.name}</p>
+            )}
           </div>
 
           <div>
@@ -103,55 +105,105 @@ export function PetRegisterForm({ onSubmit }: PetRegisterFormProps) {
                 <option>Others</option>
               </select>
             </div>
-            {errors.species && <p className="text-sm text-red-600 mt-1">{errors.species}</p>}
+            {errors.species && (
+              <p className="text-sm text-red-600 mt-1">{errors.species}</p>
+            )}
           </div>
 
           <div>
             <Label>Breed</Label>
-            <Input value={values.breed} onChange={(e) => handleChange("breed", e.target.value)} placeholder="e.g., Golden Retriever" />
-            {errors.breed && <p className="text-sm text-red-600 mt-1">{errors.breed}</p>}
+            <Input
+              value={values.breed}
+              onChange={(e) => handleChange("breed", e.target.value)}
+              placeholder="e.g., Golden Retriever"
+            />
+            {errors.breed && (
+              <p className="text-sm text-red-600 mt-1">{errors.breed}</p>
+            )}
           </div>
 
           <div>
             <Label>Sex</Label>
             <div className="mt-1">
-              <select className="w-full rounded-md border border-gray-200 px-3 py-2" value={values.sex} onChange={(e) => handleChange("sex", e.target.value)}>
+              <select
+                className="w-full rounded-md border border-gray-200 px-3 py-2"
+                value={values.sex}
+                onChange={(e) => handleChange("sex", e.target.value)}
+              >
                 <option>Male</option>
                 <option>Female</option>
               </select>
             </div>
-            {errors.sex && <p className="text-sm text-red-600 mt-1">{errors.sex}</p>}
+            {errors.sex && (
+              <p className="text-sm text-red-600 mt-1">{errors.sex}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Age</Label>
-              <Input value={values.ageValue} onChange={(e) => handleChange("ageValue", e.target.value)} placeholder="e.g., 2" />
-              {errors.ageValue && <p className="text-sm text-red-600 mt-1">{errors.ageValue}</p>}
+              <Input
+                value={values.ageValue}
+                onChange={(e) => handleChange("ageValue", e.target.value)}
+                placeholder="e.g., 2"
+              />
+              {errors.ageValue && (
+                <p className="text-sm text-red-600 mt-1">{errors.ageValue}</p>
+              )}
             </div>
             <div>
               <Label>Unit</Label>
               <div className="mt-1">
-                <select className="w-full rounded-md border border-gray-200 px-3 py-2" value={values.ageUnit} onChange={(e) => handleChange("ageUnit", e.target.value)}>
+                <select
+                  className="w-full rounded-md border border-gray-200 px-3 py-2"
+                  value={values.ageUnit}
+                  onChange={(e) => handleChange("ageUnit", e.target.value)}
+                >
                   <option value="months">months</option>
                   <option value="years">years</option>
                 </select>
               </div>
-              {errors.ageUnit && <p className="text-sm text-red-600 mt-1">{errors.ageUnit}</p>}
+              {errors.ageUnit && (
+                <p className="text-sm text-red-600 mt-1">{errors.ageUnit}</p>
+              )}
             </div>
           </div>
 
           <div>
             <Label>Color / Markings</Label>
-            <Input value={values.color} onChange={(e) => handleChange("color", e.target.value)} placeholder="e.g., Brown with white patch" />
-            {errors.color && <p className="text-sm text-red-600 mt-1">{errors.color}</p>}
+            <Input
+              value={values.color}
+              onChange={(e) => handleChange("color", e.target.value)}
+              placeholder="e.g., Brown with white patch"
+            />
+            {errors.color && (
+              <p className="text-sm text-red-600 mt-1">{errors.color}</p>
+            )}
           </div>
 
           <div className="flex gap-2">
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? "Registering..." : "Register Pet"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setValues({ name: "", species: "Dog", breed: "", sex: "Male", ageValue: "", ageUnit: "years", color: "" })}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setValues({
+                  name: "",
+                  species: "Dog",
+                  breed: "",
+                  sex: "Male",
+                  ageValue: "",
+                  ageUnit: "years",
+                  color: "",
+                })
+              }
+            >
               Reset
             </Button>
           </div>
