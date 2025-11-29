@@ -337,10 +337,10 @@ export default function BookingForm({
 
       const { data, error: fetchError } = await supabase
         .from("appointments")
-        .select("date,status")
-        .eq("doctor_id", selectedDoctorId)
-        .gte("date", dayStart.toISOString())
-        .lte("date", dayEnd.toISOString());
+        .select("scheduled_at,status")
+        .eq("veterinarian_id", selectedDoctorId)
+        .gte("scheduled_at", dayStart.toISOString())
+        .lte("scheduled_at", dayEnd.toISOString());
 
       if (!isMounted) return;
 
@@ -353,7 +353,7 @@ export default function BookingForm({
             (data || [])
               .filter((appointment) => appointment.status !== "cancelled")
               .map((appointment) => {
-                const bookedDate = new Date(appointment.date);
+                const bookedDate = new Date(appointment.scheduled_at);
                 return getLocalTimeKey(bookedDate);
               })
           )

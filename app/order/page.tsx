@@ -55,7 +55,7 @@ export default function OrderPage({ searchParams }: OrderPageProps) {
     useEffect(() => {
         const fetchData = async () => {
             const prescriptionId = (await searchParams).prescriptionId;
-            
+
             if (!prescriptionId) {
                 toast.error("No prescription ID provided");
                 router.push("/dashboard");
@@ -64,7 +64,7 @@ export default function OrderPage({ searchParams }: OrderPageProps) {
 
             // fetch prescription
             const prescriptionData = await getPrescriptionById(prescriptionId);
-            
+
             if (!prescriptionData) {
                 toast.error("Prescription not found");
                 router.push("/dashboard");
@@ -201,7 +201,7 @@ export default function OrderPage({ searchParams }: OrderPageProps) {
                 {/* pharmacy list section */}
                 <section>
                     <p className="text-2xl font-bold mb-4">Available Pharmacies</p>
-                    
+
                     {pharmaciesLoading ? (
                         <p className="text-gray-600">Loading pharmacies...</p>
                     ) : pharmacies.length === 0 ? (
@@ -222,8 +222,8 @@ export default function OrderPage({ searchParams }: OrderPageProps) {
                                     <CardContent>
                                         <div className="flex flex-col md:flex-row md:items-start gap-4">
                                             {pharmacy.logo_url && (
-                                                <img 
-                                                    src={pharmacy.logo_url} 
+                                                <img
+                                                    src={pharmacy.logo_url}
                                                     alt={pharmacy.name}
                                                     className="w-16 h-16 rounded-lg object-cover"
                                                 />
@@ -234,7 +234,7 @@ export default function OrderPage({ searchParams }: OrderPageProps) {
                                                 </h3>
                                                 <p className="text-gray-600">{pharmacy.address}, {pharmacy.city}</p>
                                                 <p className="text-gray-600">Contact: {pharmacy.contact_phone}</p>
-                                                
+
                                                 <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                                                     <p className="font-medium">{pharmacy.inventory.medication_name}</p>
                                                     {pharmacy.inventory.concentration && (
@@ -246,7 +246,7 @@ export default function OrderPage({ searchParams }: OrderPageProps) {
                                                         ₱{pharmacy.inventory.unit_price.toFixed(2)} per unit
                                                     </p>
                                                     <p className="text-sm text-gray-600">
-                                                        Delivery fee: ₱{pharmacy.delivery_fee.toFixed(2)} 
+                                                        Delivery fee: ₱{pharmacy.delivery_fee.toFixed(2)}
                                                         {" "}({pharmacy.estimated_delivery_mins} mins est.)
                                                     </p>
                                                 </div>
@@ -272,7 +272,7 @@ export default function OrderPage({ searchParams }: OrderPageProps) {
                     <Card className="w-full max-w-md">
                         <CardContent className="p-6">
                             <h2 className="text-xl font-bold mb-4">Complete Your Order</h2>
-                            
+
                             <div className="space-y-4">
                                 <div className="p-3 bg-gray-50 rounded-lg">
                                     <p className="font-medium">{selectedPharmacy.name}</p>
