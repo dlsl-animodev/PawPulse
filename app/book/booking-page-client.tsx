@@ -181,7 +181,7 @@ Preferences: ${result.preferredDate || "None"} at ${
   return (
     <BookingForm
       doctors={doctors}
-      pets={pets}
+      // pets={pets}
       contactInfo={contactInfo}
       isGuest={isGuest}
       initialData={initialData}
