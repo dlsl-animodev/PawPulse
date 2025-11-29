@@ -82,6 +82,12 @@ export async function createPrescription(data: {
     return { error: "Veterinarian profile not found" };
   }
 
+  // validate pet_id - it's required for prescriptions
+  const petId = data.petId && data.petId.trim() !== "" ? data.petId : null;
+  if (!petId) {
+    return { error: "A pet must be selected to create a prescription" };
+  }
+
   // security: verify the veterinarian has an appointment with this pet/owner
   const { data: appointment } = await supabase
     .from("appointments")
@@ -95,7 +101,7 @@ export async function createPrescription(data: {
   }
 
   const { error } = await supabase.from("prescriptions").insert({
-    pet_id: data.petId,
+    pet_id: petId,
     owner_id: data.ownerId,
     veterinarian_id: vet.id,
     appointment_id: data.appointmentId,
