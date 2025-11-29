@@ -10,18 +10,35 @@ import {
 const completeConsultationDeclaration: FunctionDeclaration = {
   name: "completeConsultation",
   description:
-    "Call this when you have gathered enough information to book an appointment. You need to collect symptoms, and optionally preferred doctor, date, and time.",
+    "Call this when you have gathered enough information to book a vet appointment. You need to collect pet details, symptoms, and optionally preferred doctor, date, and time.",
   parameters: {
     type: Type.OBJECT,
     properties: {
+      petName: {
+        type: Type.STRING,
+        description: "The name of the pet.",
+      },
+      petType: {
+        type: Type.STRING,
+        description: "The type of animal (e.g., Dog, Cat, Bird).",
+      },
+      petBreed: {
+        type: Type.STRING,
+        description: "The breed of the pet, if known.",
+      },
+      petAge: {
+        type: Type.STRING,
+        description: "The age of the pet.",
+      },
       summary: {
         type: Type.STRING,
         description:
-          "A detailed summary of the symptoms, duration, and severity.",
+          "A detailed summary of the pet's symptoms, duration, and severity.",
       },
       preferredDoctor: {
         type: Type.STRING,
-        description: "The name of the doctor the user wants to see, if any.",
+        description:
+          "The name of the veterinarian the user wants to see, if any.",
       },
       preferredDate: {
         type: Type.STRING,
@@ -34,25 +51,30 @@ const completeConsultationDeclaration: FunctionDeclaration = {
           "The preferred time for the appointment (e.g., 'morning', '2 PM').",
       },
     },
-    required: ["summary"],
+    required: ["summary", "petName", "petType"],
   },
 };
 
 const MODEL_NAME = "gemini-2.5-flash-native-audio-preview-09-2025";
 const SYSTEM_INSTRUCTION = `
-You are a gentle, patient, and professional AI Medical Assistant for CareLink.
-Your goal is to help the user book an appointment by gathering their symptoms and preferences.
+You are a gentle, patient, and professional AI Veterinary Assistant for CareLink.
+Your goal is to help the user book a vet appointment by gathering their pet's details, symptoms and preferences.
 
 Protocol:
-1. Greet the user warmly (e.g., "Hello, I'm CareLink. I can help you book an appointment. Could you tell me what symptoms you are experiencing?").
-2. Gather key details: Main symptom, Duration, Severity.
-3. Ask if they have a preferred doctor, date, or time for the appointment.
-4. Once you have the information, call the completeConsultation function.
+1. Greet the user warmly (e.g., "Hello, I'm CareLink. I can help you book a vet appointment. First, could you tell me your pet's name and what kind of animal they are?").
+2. Gather pet details: Name, Type (Dog, Cat, etc.), Breed (optional), and Age.
+3. Gather key details about the issue: Main symptom, Duration, Severity.
+4. Ask if they have a preferred veterinarian, date, or time for the appointment.
+5. Once you have the information, call the completeConsultation function.
 
 Tone: Empathetic, Trustworthy, Calm. Keep sentences short.
 `;
 
 export interface ConsultationResult {
+  petName: string;
+  petType: string;
+  petBreed?: string;
+  petAge?: string;
   summary: string;
   preferredDoctor?: string;
   preferredDate?: string;
@@ -184,6 +206,10 @@ export class ConsultationService {
         if (fc.name === "completeConsultation") {
           const args = fc.args as any;
           this.callbacks.onComplete({
+            petName: args.petName,
+            petType: args.petType,
+            petBreed: args.petBreed,
+            petAge: args.petAge,
             summary: args.summary,
             preferredDoctor: args.preferredDoctor,
             preferredDate: args.preferredDate,

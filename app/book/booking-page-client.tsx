@@ -51,9 +51,17 @@ export default function BookingPageClient({
     }
 
     setInitialData({
-      notes: `Symptoms: ${result.summary}\n\nPreferences: ${
-        result.preferredDate || "None"
-      } at ${result.preferredTime || "None"}`,
+      notes: `Pet Details:
+Name: ${result.petName}
+Type: ${result.petType}
+Breed: ${result.petBreed || "Unknown"}
+Age: ${result.petAge || "Unknown"}
+
+Symptoms: ${result.summary}
+
+Preferences: ${result.preferredDate || "None"} at ${
+        result.preferredTime || "None"
+      }`,
       doctorId: doctorId,
     });
     setMode("manual");
