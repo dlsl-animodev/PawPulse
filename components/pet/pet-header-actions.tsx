@@ -37,8 +37,8 @@ export function PetHeaderActions({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const handleSignOut = async () => {
-        await signout();
         setIsMenuOpen(false);
+        await signout();
     };
 
     const userName = profile?.full_name || user?.email || "Guest";
@@ -68,10 +68,12 @@ export function PetHeaderActions({
     return (
         <>
             <div className="flex items-center gap-2 sm:gap-3">
-                <button className="relative p-3 text-paw-text hover:text-paw-primary transition-colors rounded-full hover:bg-paw-soft">
-                    <Bell size={26} strokeWidth={2.5} />
-                    <span className="absolute top-3 right-3 w-3 h-3 bg-paw-primary rounded-full border-2 border-white animate-pulse"></span>
-                </button>
+                <Link href={'/reminders'}>
+                    <button className="relative p-3 text-paw-text hover:text-paw-primary transition-colors rounded-full hover:bg-paw-soft">
+                        <Bell size={26} strokeWidth={2.5} />
+                        <span className="absolute top-3 right-3 w-3 h-3 bg-paw-primary rounded-full border-2 border-white animate-pulse"></span>
+                    </button>
+                </Link>
 
                 {user ? (
                     <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-orange-100">

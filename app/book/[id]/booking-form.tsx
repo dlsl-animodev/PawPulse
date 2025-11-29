@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createAppointment, type Doctor } from "../actions";
+import { type Pet } from "@/lib/types/pet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -177,6 +178,7 @@ function getStoredBookingData() {
 export type BookingInitialData = {
   notes?: string;
   doctorId?: string;
+  petId?: string;
   date?: Date;
   time?: string;
 };
@@ -217,12 +219,14 @@ function DoctorAvatar({
 
 export default function BookingForm({
   doctors,
+  pets = [],
   contactInfo,
   initialDoctorId,
   isGuest = false,
   initialData,
 }: {
   doctors: Doctor[];
+  pets?: Pet[];
   contactInfo: ContactInfo;
   initialDoctorId?: string;
   isGuest?: boolean;
@@ -243,6 +247,10 @@ export default function BookingForm({
       initialData?.doctorId ||
       initialDoctorId ||
       ""
+  );
+
+  const [selectedPetId, setSelectedPetId] = useState<string>(
+    () => storedBooking?.booking?.petId || initialData?.petId || ""
   );
 
   // editable contact info for guests
@@ -294,6 +302,7 @@ export default function BookingForm({
   const [preConsultData, setPreConsultData] = useState<{
     notes: string;
     doctorId: string;
+    petId?: string;
     date: string;
     time: string;
   } | null>(null);
@@ -307,6 +316,8 @@ export default function BookingForm({
     }, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // pets are provided via prop `pets` (fetched server-side)
 
   // get available slots for the selected date
   const availableSlots = useMemo(() => {
@@ -337,10 +348,10 @@ export default function BookingForm({
 
       const { data, error: fetchError } = await supabase
         .from("appointments")
-        .select("date,status")
-        .eq("doctor_id", selectedDoctorId)
-        .gte("date", dayStart.toISOString())
-        .lte("date", dayEnd.toISOString());
+        .select("scheduled_at,status")
+        .eq("veterinarian_id", selectedDoctorId)
+        .gte("scheduled_at", dayStart.toISOString())
+        .lte("scheduled_at", dayEnd.toISOString());
 
       if (!isMounted) return;
 
@@ -353,7 +364,7 @@ export default function BookingForm({
             (data || [])
               .filter((appointment) => appointment.status !== "cancelled")
               .map((appointment) => {
-                const bookedDate = new Date(appointment.date);
+                const bookedDate = new Date(appointment.scheduled_at);
                 return getLocalTimeKey(bookedDate);
               })
           )
@@ -429,7 +440,8 @@ export default function BookingForm({
   );
 
   const canSubmit = Boolean(
-    selectedDoctorId &&
+    selectedPetId &&
+      selectedDoctorId &&
       selectedTime &&
       !isSelectedTimeBlocked &&
       isSelectedTimeAvailable
@@ -450,11 +462,27 @@ export default function BookingForm({
     setSelectedTime("");
     setTakenTimes([]);
     setSlotsLoading(false);
-    // Auto advance to next step after selection
+    // Auto advance to date/time after selection
+    setTimeout(() => setStep(3), 300);
+  }
+
+  function handlePetSelection(petId: string) {
+    setSelectedPetId(petId);
+    // reset downstream selections
+    setSelectedDoctorId("");
+    setSelectedTime("");
+    setTakenTimes([]);
+    setSlotsLoading(false);
+    // Auto advance to doctor selection
     setTimeout(() => setStep(2), 300);
   }
 
   async function handleSubmit(formData: FormData) {
+    if (!selectedPetId) {
+      setError("Please choose a pet before booking.");
+      toast.error("Please choose a pet before booking.");
+      return;
+    }
     if (!selectedDoctorId) {
       setError("Please choose a doctor before booking.");
       toast.error("Please choose a doctor before booking.");
@@ -483,6 +511,7 @@ export default function BookingForm({
       setPreConsultData({
         notes,
         doctorId: selectedDoctorId,
+        petId: selectedPetId,
         date: dateFieldValue,
         time: selectedTime,
       });
@@ -492,6 +521,7 @@ export default function BookingForm({
         contact: guestContact,
         booking: {
           notes,
+          petId: selectedPetId,
           doctorId: selectedDoctorId,
           date: dateFieldValue,
           time: selectedTime,
@@ -526,29 +556,34 @@ export default function BookingForm({
 
   // Stepper Logic
   const steps = [
-    { id: 1, title: "Vet", icon: Stethoscope },
-    { id: 2, title: "Date & Time", icon: CalendarIcon },
-    { id: 3, title: "Details", icon: Sparkles },
-    ...(isGuest ? [{ id: 4, title: "Contact", icon: UserRound }] : []),
-    { id: isGuest ? 5 : 4, title: "Review", icon: Check },
+    { id: 1, title: "Pet", icon: UserRound },
+    { id: 2, title: "Vet", icon: Stethoscope },
+    { id: 3, title: "Date & Time", icon: CalendarIcon },
+    { id: 4, title: "Details", icon: Sparkles },
+    ...(isGuest ? [{ id: 5, title: "Contact", icon: UserRound }] : []),
+    { id: isGuest ? 6 : 5, title: "Review", icon: Check },
   ];
 
   const totalSteps = steps.length;
 
   const nextStep = () => {
-    if (step === 1 && !selectedDoctorId) {
+    if (step === 1 && !selectedPetId) {
+      toast.error("Please select a pet to continue");
+      return;
+    }
+    if (step === 2 && !selectedDoctorId) {
       toast.error("Please select a specialist to continue");
       return;
     }
-    if (step === 2 && (!selectedDate || !selectedTime)) {
+    if (step === 3 && (!selectedDate || !selectedTime)) {
       toast.error("Please select a date and time");
       return;
     }
-    if (step === 3 && !notes.trim()) {
+    if (step === 4 && !notes.trim()) {
       toast.error("Please describe your reason for visit");
       return;
     }
-    if (isGuest && step === 4) {
+    if (isGuest && step === 5) {
       if (
         !guestContact.firstName ||
         !guestContact.lastName ||
@@ -572,6 +607,7 @@ export default function BookingForm({
     const selectedDoctor = doctors.find(
       (d) => d.id === preConsultData?.doctorId
     );
+    const selectedPet = pets.find((p) => p.id === preConsultData?.petId);
     return (
       <div className="rounded-3xl border border-orange-100 bg-white/70 backdrop-blur-sm p-8 shadow-sm max-w-xl mx-auto">
         <div className="text-center space-y-6">
@@ -595,6 +631,11 @@ export default function BookingForm({
                 Saved consultation details:
               </p>
               <div className="space-y-1 text-sm text-paw-text">
+                {selectedPet && (
+                  <p>
+                    Pet: <span className="font-medium">{selectedPet.name}</span>
+                  </p>
+                )}
                 {selectedDoctor && (
                   <p>
                     Doctor:{" "}
@@ -660,6 +701,7 @@ export default function BookingForm({
       className="max-w-4xl mx-auto min-h-screen pb-32 md:pb-10"
     >
       {/* Hidden Inputs */}
+      <input type="hidden" name="petId" value={selectedPetId} />
       <input type="hidden" name="doctorId" value={selectedDoctorId} />
       <input type="hidden" name="date" value={dateFieldValue} />
       <input type="hidden" name="time" value={selectedTime} />
@@ -695,10 +737,11 @@ export default function BookingForm({
             CareLink Booking
           </p>
           <h1 className="text-3xl md:text-4xl font-bold text-paw-dark tracking-tight">
-            Schedule your consultation
+            Select your pet
           </h1>
           <p className="text-paw-text max-w-md mx-auto leading-relaxed">
-            Choose from {doctors.length} trusted specialists to get started.
+            Choose from {pets.length} registered pets to get started. Add a pet
+            if needed.
           </p>
         </div>
       )}
@@ -738,8 +781,82 @@ export default function BookingForm({
       </div>
 
       <div className="min-h-[300px]">
-        {/* Step 1: Doctor Selection */}
+        {/* Step 1: Pet Selection */}
         {step === 1 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <div>
+              <div className="text-left mb-2">
+                <Label className="text-base font-semibold text-paw-dark ml-1">
+                  Select Pet
+                </Label>
+              </div>
+              {pets.length === 0 ? (
+                <div className="text-center text-paw-text py-12 bg-paw-soft rounded-3xl border border-dashed border-orange-200">
+                  No pets found.{" "}
+                  <Link
+                    href="/register-pet"
+                    className="text-paw-primary underline"
+                  >
+                    Add a pet
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {pets.map((pet) => (
+                    <button
+                      key={pet.id}
+                      type="button"
+                      onClick={() => handlePetSelection(pet.id)}
+                      className={cn(
+                        "text-left rounded-2xl p-4 flex gap-4 transition-all hover:cursor-pointer group relative overflow-hidden",
+                        selectedPetId === pet.id
+                          ? "bg-paw-primary text-white shadow-lg shadow-orange-200 scale-[1.02]"
+                          : "bg-white border border-orange-100 hover:border-orange-200 hover:shadow-md"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "h-14 w-14 rounded-xl overflow-hidden shrink-0",
+                          selectedPetId === pet.id
+                            ? "bg-white/20"
+                            : "bg-paw-soft"
+                        )}
+                      >
+                        <Image
+                          src={pet.profile_image_url || "/pet_placeholder.png"}
+                          alt={pet.name}
+                          width={56}
+                          height={56}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={cn(
+                            "text-base font-bold truncate",
+                            selectedPetId === pet.id
+                              ? "text-white"
+                              : "text-paw-dark"
+                          )}
+                        >
+                          {pet.name}
+                        </p>
+                      </div>
+                      {selectedPetId === pet.id && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 p-1.5 rounded-full">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Doctor Selection */}
+        {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <div className="">
               <div className="relative">
@@ -829,8 +946,8 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* Step 2: Date & Time */}
-        {step === 2 && (
+        {/* Step 3: Date & Time */}
+        {step === 3 && (
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <Label className="text-base font-semibold text-paw-dark ml-1">
@@ -920,7 +1037,7 @@ export default function BookingForm({
               <Label className="text-base font-semibold text-paw-dark ml-1">
                 Available Times
               </Label>
-              <div className="bg-white rounded-3xl border border-orange-100 shadow-sm p-5 min-h-[320px]">
+              <div className="bg-white rounded-3xl border border-orange-100 shadow-sm p-5 min-h-80">
                 <div className="grid grid-cols-3 gap-2">
                   {availableSlots.length === 0 ? (
                     <div className="col-span-full text-center py-12 text-paw-text/50">
@@ -960,8 +1077,8 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* Step 3: Details */}
-        {step === 3 && (
+        {/* Step 4: Details */}
+        {step === 4 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <div className="bg-white rounded-3xl border border-orange-200 p-1 shadow-sm">
               <Textarea
@@ -983,8 +1100,8 @@ export default function BookingForm({
           </div>
         )}
 
-        {/* Step 4: Contact (Guest Only) */}
-        {isGuest && step === 4 && (
+        {/* Step 5: Contact (Guest Only) */}
+        {isGuest && step === 5 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -1071,7 +1188,7 @@ export default function BookingForm({
                   variant="ghost"
                   size="sm"
                   className="text-paw-primary hover:bg-paw-soft rounded-full px-3"
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(2)}
                 >
                   Change
                 </Button>
@@ -1099,7 +1216,7 @@ export default function BookingForm({
                   variant="ghost"
                   size="sm"
                   className="text-paw-primary hover:bg-paw-soft rounded-full px-3"
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                 >
                   Change
                 </Button>
@@ -1121,7 +1238,7 @@ export default function BookingForm({
                   variant="ghost"
                   size="sm"
                   className="text-paw-primary hover:bg-paw-soft rounded-full px-3"
-                  onClick={() => setStep(3)}
+                  onClick={() => setStep(4)}
                 >
                   Edit
                 </Button>
@@ -1147,7 +1264,7 @@ export default function BookingForm({
                     variant="ghost"
                     size="sm"
                     className="text-paw-primary hover:bg-paw-soft rounded-full px-3"
-                    onClick={() => setStep(4)}
+                    onClick={() => setStep(5)}
                   >
                     Edit
                   </Button>

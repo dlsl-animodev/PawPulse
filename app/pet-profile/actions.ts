@@ -1,3 +1,4 @@
+import { Pet } from "@/lib/types/pet";
 import { createClient } from "@/utils/supabase/server";
 
 export async function getPetById(petId: string) {
@@ -26,7 +27,7 @@ export async function getPetById(petId: string) {
   }
 }
 
-export async function fetchAllPets() {
+export async function fetchAllPets(): Promise<Pet[]> {
   const supabase = await createClient();
 
   // get current user from Supabase auth; only return pets owned by this user
@@ -41,7 +42,7 @@ export async function fetchAllPets() {
     const { data, error } = await supabase
       .from("pets")
       .select(
-        "id, name, species, breed, gender, weight_kg, profile_image_url, notes, created_at"
+        "id, name, species, breed, gender, weight_kg, profile_image_url, notes, created_at, owner_id, color, age, is_active"
       )
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false });
@@ -51,7 +52,7 @@ export async function fetchAllPets() {
       return [];
     }
 
-    return data ?? [];
+    return (data as Pet[]) ?? [];
   } catch (err) {
     console.error("fetchAllPets unexpected error:", err);
     return [];
