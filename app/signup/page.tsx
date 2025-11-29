@@ -218,23 +218,7 @@ function SignupForm() {
               </button>
             </div>
           </div>
-          {role === "pharmacist" && (
-            <div className="space-y-2">
-              <Label htmlFor="pharmacy">Pharmacy</Label>
-              <select
-                id="pharmacy"
-                name="pharmacy"
-                className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                {pharmacies.map((pharmacy) => (
-                  <option key={pharmacy} value={pharmacy}>
-                    {pharmacy}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+
           {role === "doctor" && (
             <div className="space-y-2">
               <Label htmlFor="specialty">Specialty</Label>
