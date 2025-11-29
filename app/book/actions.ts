@@ -41,7 +41,7 @@ export async function getGeminiApiKey() {
 
 const createAppointmentSchema = z.object({
   veterinarianId: z.string().uuid({ message: "Choose a valid veterinarian." }),
-  petId: z.string().uuid({ message: "Choose a valid pet." }).optional(),
+  petId: z.string().uuid({ message: "Choose a valid pet." }).optional().nullable().transform(val => val || undefined),
   date: z.string().min(1, "Date is required."),
   time: z.string().min(1, "Time is required."),
   symptoms: z.string().min(5, "Please describe your pet's symptoms or reason for visit."),
@@ -185,13 +185,20 @@ export async function createGuestPreConsult(formData: FormData) {
 export async function createAppointment(formData: FormData) {
   const supabase = await createClient();
 
+  const veterinarianId = (formData.get("veterinarianId") || formData.get("doctorId")) as string | null;
+  const petId = formData.get("petId") as string | null;
+  const date = formData.get("date") as string | null;
+  const time = formData.get("time") as string | null;
+  const symptoms = (formData.get("symptoms") || formData.get("notes")) as string | null;
+  const visitType = formData.get("visitType") as string | null;
+
   const parsed = createAppointmentSchema.safeParse({
-    veterinarianId: formData.get("veterinarianId") || formData.get("doctorId"),
-    petId: formData.get("petId"),
-    date: formData.get("date"),
-    time: formData.get("time"),
-    symptoms: formData.get("symptoms") || formData.get("notes"),
-    visitType: formData.get("visitType") ?? "checkup",
+    veterinarianId: veterinarianId || undefined,
+    petId: petId || undefined,
+    date: date || undefined,
+    time: time || undefined,
+    symptoms: symptoms || undefined,
+    visitType: visitType || "checkup",
   });
 
   if (!parsed.success) {

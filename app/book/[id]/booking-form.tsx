@@ -303,15 +303,15 @@ export default function BookingForm({
 
       const { data, error: fetchError } = await supabase
         .from("appointments")
-        .select("date,status")
-        .eq("doctor_id", selectedDoctorId)
-        .gte("date", dayStart.toISOString())
-        .lte("date", dayEnd.toISOString());
+        .select("scheduled_at,status")
+        .eq("veterinarian_id", selectedDoctorId)
+        .gte("scheduled_at", dayStart.toISOString())
+        .lte("scheduled_at", dayEnd.toISOString());
 
       if (!isMounted) return;
 
       if (fetchError) {
-        console.error("Failed to load doctor availability", fetchError);
+        console.error("Failed to load vet availability", fetchError);
         setTakenTimes([]);
       } else {
         const blocked = Array.from(
@@ -319,7 +319,7 @@ export default function BookingForm({
             (data || [])
               .filter((appointment) => appointment.status !== "cancelled")
               .map((appointment) => {
-                const bookedDate = new Date(appointment.date);
+                const bookedDate = new Date(appointment.scheduled_at);
                 return getLocalTimeKey(bookedDate);
               })
           )
@@ -617,10 +617,10 @@ export default function BookingForm({
       className="max-w-4xl mx-auto min-h-screen pb-32 md:pb-10"
     >
       {/* Hidden Inputs */}
-      <input type="hidden" name="doctorId" value={selectedDoctorId} />
+      <input type="hidden" name="veterinarianId" value={selectedDoctorId} />
       <input type="hidden" name="date" value={dateFieldValue} />
       <input type="hidden" name="time" value={selectedTime} />
-      <input type="hidden" name="notes" value={notes} />
+      <input type="hidden" name="symptoms" value={notes} />
       {isGuest && (
         <>
           <input
