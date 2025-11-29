@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,10 +38,11 @@ const PetSchema = z.object({
 export type PetFormValues = z.infer<typeof PetSchema>;
 
 interface PetRegisterFormProps {
-  registerAction: (formData: FormData) => Promise<{ error?: string } | void>;
+  registerAction: (formData: FormData) => Promise<any>;
 }
 
 export function PetRegisterForm({ registerAction }: PetRegisterFormProps) {
+  const router = useRouter();
   const [values, setValues] = useState({
     name: "",
     species: "Dog",
@@ -107,8 +109,13 @@ export function PetRegisterForm({ registerAction }: PetRegisterFormProps) {
 
       if (result?.error) {
         setErrors({ submit: result.error });
+      } else {
+        // If the server returned the created pet, navigate to its profile
+        const id = result?.id ?? result?.data?.id ?? result?.pet?.id;
+        if (id) {
+          router.push(`/pet-profile?petId=${id}`);
+        }
       }
-      // If no error, the server action will redirect
     } catch (error) {
       console.error("Registration error:", error);
       setErrors({
