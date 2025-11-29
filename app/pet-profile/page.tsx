@@ -5,8 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowBigRight } from "lucide-react";
+import { ArrowBigRight, Edit } from "lucide-react";
 import Link from "next/link";
+
+import DogImage from "../../public/dog.jpg";
+import Image from "next/image";
 
 interface PetProfilePageProps {
     searchParams: Promise<{
@@ -51,14 +54,17 @@ export default function PetProfilePage({ searchParams }: PetProfilePageProps) {
                 </p>
             </div>
 
-            <Card className="bg-primary/10">
+            <Card className="bg-[#eab05c]">
                 <CardContent className="space-y-4">
-                    <Badge> Urgent </Badge>
-                    <div className="flex items-center gap-12">
+                    <Badge variant={"outline"}> Urgent </Badge>
+                    <div className="flex items-center gap-16">
                         <p className="font-semibold text-xl">
                             Appointment today at 3:00 PM
                         </p>
-                        <Button variant={"secondary"}>
+                        <Button
+                            variant={"secondary"}
+                            className="bg-[#d95022] text-white"
+                        >
                             <ArrowBigRight />
                         </Button>
                     </div>
@@ -96,15 +102,74 @@ export default function PetProfilePage({ searchParams }: PetProfilePageProps) {
                 </div>
             </div>
 
+            {/* Pet Details */}
+            <div ref={detailsRef}>
+                <Card>
+                    <CardContent>
+                        <div className="flex ">
+                            <h2 className="text-2xl font-semibold mb-4">
+                                Pet Details
+                            </h2>
+                            <Edit />
+                        </div>
+                        <Image
+                            src={DogImage}
+                            alt="Dog Picture"
+                            width={200}
+                            height={200}
+                            className="rounded-md mb-4 w-full aspect-video object-cover"
+                        />
+                        <section className="space-y-4">
+                            <div>
+                                <p className="text-sm font-semibold mb-2">
+                                    Pet Name
+                                </p>
+                                <Input disabled />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold mb-2">
+                                    Species
+                                </p>
+                                <Input disabled />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold mb-2">
+                                    Breed
+                                </p>
+                                <Input disabled />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold mb-2">
+                                    Age
+                                </p>
+                                <Input disabled />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold mb-2">
+                                    Weight
+                                </p>
+                                <Input disabled />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold mb-2">
+                                    Gender
+                                </p>
+                                <Input disabled />
+                            </div>
+                        </section>
+                    </CardContent>
+                </Card>
+            </div>
+
             {/* Appointments */}
             <div ref={appointmentsRef}>
                 <Card>
                     <CardContent>
-                        <div className="mb-4 space-y-2">
+                        <div className="space-y-2 flex items-center justify-between">
                             <h2 className="text-2xl font-semibold">
                                 Appointments
                             </h2>
-                            <Button>Book New Appointment</Button>
+                            <Button>New </Button>
                         </div>
                     </CardContent>
 
@@ -149,49 +214,6 @@ export default function PetProfilePage({ searchParams }: PetProfilePageProps) {
                             </tbody>
                         </table>
                     </div>
-                </Card>
-            </div>
-
-            {/* Pet Details */}
-            <div ref={detailsRef}>
-                <Card>
-                    <CardContent>
-                        <h2 className="text-2xl font-semibold mb-4">
-                            Pet Details
-                        </h2>
-                        <section className="space-y-4">
-                            <div>
-                                <p className="text-sm font-semibold mb-2">
-                                    Pet Name
-                                </p>
-                                <Input disabled />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold mb-2">
-                                    Species
-                                </p>
-                                <Input disabled />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold mb-2">
-                                    Breed
-                                </p>
-                                <Input disabled />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold mb-2">
-                                    Age
-                                </p>
-                                <Input disabled />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold mb-2">
-                                    Weight
-                                </p>
-                                <Input disabled />
-                            </div>
-                        </section>
-                    </CardContent>
                 </Card>
             </div>
 
