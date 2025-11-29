@@ -56,7 +56,7 @@ const myPets: Pet[] = [
     species: "Bird",
     age: 1,
     profile_image_url:
-      "https://images.unsplash.com/photo-1552728089-57bdde30ebd1?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1552728089-57bdde30beb3?ixlib=rb-4.1.0&q=85&fm=jpg&crop=entropy",
     nextCheckup: "Dec 01, 2023",
   },
 ];

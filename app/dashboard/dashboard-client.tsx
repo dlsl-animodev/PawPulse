@@ -34,6 +34,7 @@ import {
 import Link from "next/link";
 import { AiChatPanel } from "./ai-chat";
 import { SupportModal } from "@/components/support-modal";
+import { Pet } from "@/lib/types/pet";
 import {
   addAppointmentNotes,
   createPrescription,
@@ -113,6 +114,7 @@ interface DashboardClientProps {
   } | null;
   latestAppointment: OwnerAppointment | null;
   showSuccess: boolean;
+  pets: Pet[];
 }
 
 export function DashboardClient({
@@ -125,6 +127,7 @@ export function DashboardClient({
   doctorProfile,
   //latestAppointment,
   showSuccess,
+  pets,
 }: DashboardClientProps) {
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [orderingMed, setOrderingMed] = useState<string | null>(null);
@@ -392,6 +395,32 @@ export function DashboardClient({
             <Button className="bg-paw-primary hover:bg-paw-primaryDark hover:cursor-pointer whitespace-nowrap">
               <UserPlus className="h-4 w-4 mr-2" />
               Create Account
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* no pets registered banner */}
+      {!user.is_anonymous && profile?.role !== "veterinarian" && pets.length === 0 && (
+        <div className="bg-paw-soft border border-paw-primary/20 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center text-paw-primary shrink-0">
+              <Plus className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-medium text-paw-dark">
+                No pets registered yet
+              </p>
+              <p className="text-sm text-paw-text">
+                Register your pet to manage appointments, medical records, and get
+                personalized care.
+              </p>
+            </div>
+          </div>
+          <Link href="/register-pet">
+            <Button className="bg-paw-primary hover:bg-paw-primaryDark text-white hover:cursor-pointer whitespace-nowrap">
+              <Plus className="h-4 w-4 mr-2" />
+              Register Pet
             </Button>
           </Link>
         </div>
@@ -732,7 +761,7 @@ export function DashboardClient({
                   <p className="text-gray-500 mb-4">No upcoming appointments</p>
                   <Link href="/book">
                     <Button variant="outline" className="hover:cursor-pointer">
-                      Find a Doctor
+                      Find a Veterinarian
                     </Button>
                   </Link>
                 </CardContent>

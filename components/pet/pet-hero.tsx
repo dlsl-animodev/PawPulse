@@ -1,4 +1,4 @@
-import { Video, Calendar, Sparkles } from "lucide-react";
+import { Video, Calendar, Sparkles, MessageCircle } from "lucide-react";
 import Link from "next/link";
 
 export function Hero() {
@@ -48,17 +48,20 @@ export function Hero() {
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <button className="relative group inline-flex items-center justify-center px-8 py-5 border-b-4 border-orange-700 text-lg font-bold rounded-2xl text-white bg-paw-primary active:border-b-0 active:translate-y-1 transition-all overflow-hidden">
-                <div className="absolute inset-0 w-full h-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                <Video className="mr-3 h-6 w-6" strokeWidth={3} />
-                Talk to a Vet
-              </button>
               <Link
                 href="/book"
+                className="relative group inline-flex items-center justify-center px-8 py-5 border-b-4 border-orange-700 text-lg font-bold rounded-2xl text-white bg-paw-primary active:border-b-0 active:translate-y-1 transition-all overflow-hidden"
+              >
+                <div className="absolute inset-0 w-full h-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                <MessageCircle className="mr-3 h-6 w-6" strokeWidth={3} />
+                Talk to a Vet
+              </Link>
+              <Link
+                href="/login"
                 className="inline-flex items-center justify-center px-8 py-5 border-2 border-orange-100 text-lg font-bold rounded-2xl text-paw-primaryDark bg-white hover:border-paw-primary hover:bg-orange-50 transition-all active:scale-95"
               >
                 <Calendar className="mr-3 h-6 w-6" strokeWidth={2.5} />
-                Book Checkup
+                Manage Appointments
               </Link>
             </div>
           </div>
@@ -87,7 +90,7 @@ export function Hero() {
                       </p>
                       <p className="text-white/90 font-bold text-base flex items-center gap-2 mt-1">
                         <span className="w-3 h-3 bg-paw-secondary rounded-full animate-pulse border-2 border-white"></span>
-                        Available for video call
+                        Available right now
                       </p>
                     </div>
                     <div className="bg-white/20 backdrop-blur-md p-3 rounded-full hover:bg-white/30 transition-colors cursor-pointer">

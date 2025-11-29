@@ -105,14 +105,23 @@ export function PetHeaderActions({
             </div>
 
             {/* Mobile Menu Overlay */}
-            {isMenuOpen && (
-                <div className="fixed inset-0 z-50 h-dvh md:hidden">
-                    <div
-                        className="absolute inset-0 bg-paw-dark/20 backdrop-blur-sm"
-                        onClick={() => setIsMenuOpen(false)}
-                    ></div>
-                    <div className="absolute inset-y-0 right-0 w-full max-w-[85vw] bg-white shadow-2xl p-6 flex flex-col rounded-l-[2rem]">
-                        <div className="flex justify-between items-center mb-8">
+            <div
+                className={`fixed inset-0 z-50 h-dvh md:hidden transition-all duration-300 ${
+                    isMenuOpen ? "visible opacity-100" : "invisible opacity-0"
+                }`}
+            >
+                <div
+                    className={`absolute inset-0 bg-paw-dark/20 backdrop-blur-sm transition-opacity duration-300 ${
+                        isMenuOpen ? "opacity-100" : "opacity-0"
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                ></div>
+                <div
+                    className={`absolute inset-y-0 right-0 w-full max-w-[85vw] bg-white shadow-2xl p-6 flex flex-col rounded-l-[2rem] transition-transform duration-300 ease-out ${
+                        isMenuOpen ? "translate-x-0" : "translate-x-full"
+                    }`}
+                >
+                    <div className="flex justify-between items-center mb-8">
                             <span className="text-3xl font-display font-bold text-paw-dark">
                                 Menu
                             </span>
@@ -195,7 +204,6 @@ export function PetHeaderActions({
                         )}
                     </div>
                 </div>
-            )}
         </>
     );
 }

@@ -1,6 +1,15 @@
 // app/pet-profile/page.tsx
 import PetProfile from "@/components/pet/pet-profile-client";
 import { createClient } from "@/utils/supabase/server";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default async function PetProfilePage({
   searchParams,
@@ -8,9 +17,80 @@ export default async function PetProfilePage({
   searchParams: Promise<{ petId?: string }>;
 }) {
   const petId = (await searchParams).petId;
+
   if (!petId) {
-    return <div className="p-6 text-red-500">No petId provided.
-    </div>;
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return <div className="p-6">Please log in to view your pets.</div>;
+    }
+
+    const { data: pets, error } = await supabase
+      .from("pets")
+      .select("*")
+      .eq("owner_id", user.id);
+
+    if (error) {
+      console.error("Error fetching pets:", error);
+      return <div className="p-6 text-red-500">Error loading pets</div>;
+    }
+
+    if (!pets || pets.length === 0) {
+      return <div className="p-6">No pets found.</div>;
+    }
+
+    return (
+      <div className="container mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">My Pets</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {pets.map((pet) => (
+            <Link
+              href={`/pet-profile?petId=${pet.id}`}
+              key={pet.id}
+              className="block h-full"
+            >
+              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
+                <CardHeader>
+                  <CardTitle>{pet.name}</CardTitle>
+                  <CardDescription>
+                    {pet.species} {pet.breed ? `- ${pet.breed}` : ""}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pet.profile_image_url ? (
+                    <div className="relative w-full h-48 mb-4 rounded-md overflow-hidden">
+                      <Image
+                        src={pet.profile_image_url}
+                        alt={pet.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-48 mb-4 bg-muted rounded-md flex items-center justify-center text-muted-foreground">
+                      No Image
+                    </div>
+                  )}
+                  <div className="text-sm space-y-1">
+                    <p>
+                      <span className="font-medium">Gender:</span>{" "}
+                      {pet.gender || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-medium">Age:</span>{" "}
+                      {pet.age || "N/A"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   const data = await getPetById(petId);
@@ -53,19 +133,19 @@ async function getPetById(petId: string) {
       .from("appointments")
       .select("*")
       .eq("pet_id", petId)
-      .order("scheduled_at", { ascending: false });
+      .order("date", { ascending: false });
 
     const prescriptionsPromise = supabase
       .from("prescriptions")
       .select("*")
       .eq("pet_id", petId)
-      .order("created_at", { ascending: false });
+      .order("date_issued", { ascending: false });
 
     const historyPromise = supabase
-      .from("pet_conditions")
+      .from("pet_medical_history")
       .select("*")
       .eq("pet_id", petId)
-      .order("created_at", { ascending: false });
+      .order("date", { ascending: false });
 
     const [
       { data: pet, error: petError },

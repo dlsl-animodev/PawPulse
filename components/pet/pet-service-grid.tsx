@@ -32,14 +32,6 @@ const services: any[] = [
     action: "View",
     color: "bg-paw-pink",
   },
-  {
-    id: "4",
-    title: "Pet Shop",
-    description: "Food & Toys",
-    icon: <ShoppingBag size={32} className="text-white" />,
-    action: "Browse",
-    color: "bg-paw-accent",
-  },
 ];
 
 export function ServiceGrid() {

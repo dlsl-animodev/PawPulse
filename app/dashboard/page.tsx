@@ -61,6 +61,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const doctorAppointments = (dashboardData.doctorAppointments || []) as VetAppointment[]
   const doctorProfile = dashboardData.doctorProfile
   const latestAppointment = dashboardData.latestAppointment as OwnerAppointment | null
+  const pets = dashboardData.pets || []
 
   if (!user) {
     redirect('/login')
@@ -85,6 +86,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       doctorProfile={doctorProfile}
       latestAppointment={latestAppointment}
       showSuccess={showSuccess}
+      pets={pets}
     />
   )
 }
