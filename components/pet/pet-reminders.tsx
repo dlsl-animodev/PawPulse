@@ -96,7 +96,8 @@ export async function Reminders() {
               </Link>
 
               {pets.map((pet) => (
-                <div
+                <Link
+                  href={`/pet-profile?petId=${pet.id}`}
                   key={pet.id}
                   className="flex-shrink-0 snap-start group cursor-pointer relative w-20 sm:w-28"
                 >
@@ -130,7 +131,7 @@ export async function Reminders() {
                       🐦
                     </span>
                   )}
-                </div>
+                </Link>
               ))}
             </div>
           </div>
