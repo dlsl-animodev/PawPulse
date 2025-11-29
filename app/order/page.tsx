@@ -83,9 +83,9 @@ export default function OrderPage({ searchParams }: OrderPageProps) {
                 </p>
             </div>
             {/* Content  */}
-            <div className="flex gap-10">
+            <div className="flex flex-wrap gap-10">
                 {/* Floating Prescription Left Section */}
-                <section className="w-1/3">
+                <section className="w-full">
                     <Card>
                         <CardContent>
                             {prescriptionLoading ? (
