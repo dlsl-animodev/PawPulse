@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Heart,
   Eye,
@@ -51,85 +50,12 @@ export default async function Home() {
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
       {/* Main Content */}
       <main className="flex-1">
-        <div className="mx-auto max-w-6xl px-6 py-8 space-y-10">
-          {/* Greeting + Search */}
-          <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-                Hello,{" "}
-                {firstName
-                  ? `${firstName[0].toUpperCase()}${firstName
-                      .slice(1)
-                      .toLowerCase()}`
-                  : ""}
-                ! 👋
-              </h1>
-              <p className="text-slate-500">How are your pets feeling?</p>
-            </div>
-            <div className="relative w-full md:w-80">
-              <Input
-                placeholder="Search doctors, medicines..."
-                aria-label="Search"
-                className="pl-10 rounded-full border-slate-200"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            </div>
-          </section>
-
-          {/* Specialties - centered */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Specialties
-              </h2>
-              <Link
-                href="/book"
-                className="text-sm text-blue-600 hover:underline"
-              >
-                See More
-              </Link>
-            </div>
-
-            {/* Centered scrollable row with larger icons */}
-            <div className="flex gap-6 overflow-x-auto pb-2 justify-center">
-              {SPECIALTIES.map((specialty, idx) => (
-                <Link
-                  key={idx}
-                  href="/book"
-                  className="flex flex-col items-center gap-2 min-w-24 text-center"
-                  aria-label={`Specialty ${specialty.name}`}
-                >
-                  <div className="h-16 w-16 rounded-full border-2 border-blue-200 bg-white flex items-center justify-center text-blue-600 hover:bg-blue-50 transition">
-                    <specialty.icon className="h-7 w-7" />
-                  </div>
-                  <span className="text-xs text-slate-600">
-                    {specialty.name}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-          <Link href="/register-pet">
-            <Button>Register new pet</Button>
-          </Link>
-
-          <section className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 rounded-3xl bg-blue-50 p-6 flex flex-col justify-between min-h-60">
-              <div>
-                <h3 className="text-xl font-bold text-slate-900 mb-1">
-                  Pet not feeling well?
-                </h3>
-                <p className="text-slate-500 text-sm">
-                  Pet acting a little weird today? Let us help them feel their
-                  best again!
-                </p>
-              </div>
-              <Link href="/book">
-                <Button className="mt-6 w-full rounded-full bg-blue-600 hover:bg-blue-700">
-                  Book consultation now
-                </Button>
-              </Link>
-            </div>
+        <Hero />
+        <div className="bg-white rounded-t-[3rem] shadow-xl shadow-orange-100/50 relative z-10 pb-20">
+          {/* <Reminders /> */}
+          {/* <ServiceGrid /> */}
+        </div>
+      </main>
 
       {/* Footer */}
       <footer className="bg-paw-dark text-slate-400 py-16 rounded-t-[3rem] -mt-10 relative z-0">
