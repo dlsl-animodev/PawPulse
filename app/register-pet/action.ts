@@ -47,7 +47,7 @@ export async function registerPet(formData: FormData) {
       name,
       species,
       breed,
-      gender,
+      gender: gender.toLowerCase(),
       age: ageValue,
       color,
       weight_kg: weightValue,
