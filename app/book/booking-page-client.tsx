@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import BookingForm, { BookingInitialData } from "./[id]/booking-form";
+import { Pet } from "@/lib/types/pet";
 import { AIBookingConsultation } from "./ai-booking-consultation";
 import { Doctor } from "./actions";
 import {
@@ -24,7 +25,7 @@ type ContactInfo = {
 
 interface BookingPageClientProps {
   doctors: Doctor[];
-  pets?: any[];
+  pets?: Pet[];
   contactInfo: ContactInfo;
   isGuest: boolean;
 }
@@ -181,7 +182,7 @@ Preferences: ${result.preferredDate || "None"} at ${
   return (
     <BookingForm
       doctors={doctors}
-      // pets={pets}
+      pets={pets}
       contactInfo={contactInfo}
       isGuest={isGuest}
       initialData={initialData}
