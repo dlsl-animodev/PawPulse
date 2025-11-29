@@ -13,7 +13,10 @@ import {
   Stethoscope,
   UserRound,
   UserPlus,
-  X,
+  Check,
+  ArrowRight,
+  ArrowLeft,
+  Info,
 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
@@ -25,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient as createBrowserClient } from "@/utils/supabase/client";
+import { cn } from "@/lib/utils";
 
 type ContactInfo = {
   firstName: string;
@@ -129,16 +133,31 @@ function isSameDay(dateA: Date, dateB: Date) {
   );
 }
 
-function SubmitButton({ canSubmit, isGuest }: { canSubmit: boolean; isGuest: boolean }) {
+function SubmitButton({
+  canSubmit,
+  isGuest,
+}: {
+  canSubmit: boolean;
+  isGuest: boolean;
+}) {
   const { pending } = useFormStatus();
   const disabled = pending || !canSubmit;
   return (
     <Button
       type="submit"
       disabled={disabled}
-      className="w-full py-4 text-lg font-semibold bg-blue-600 hover:bg-blue-700 hover:cursor-pointer"
+      className="w-full py-6 text-lg font-semibold bg-blue-600 hover:bg-blue-700 hover:cursor-pointer rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
     >
-      {pending ? "Processing..." : isGuest ? "Continue to Book" : "Confirm Appointment"}
+      {pending ? (
+        <span className="flex items-center gap-2">
+          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+          Processing...
+        </span>
+      ) : isGuest ? (
+        "Continue to Book"
+      ) : (
+        "Confirm Appointment"
+      )}
     </Button>
   );
 }
@@ -155,16 +174,25 @@ function getStoredBookingData() {
   }
 }
 
+export type BookingInitialData = {
+  notes?: string;
+  doctorId?: string;
+  date?: Date;
+  time?: string;
+};
+
 export default function BookingForm({
   doctors,
   contactInfo,
   initialDoctorId,
   isGuest = false,
+  initialData,
 }: {
   doctors: Doctor[];
   contactInfo: ContactInfo;
   initialDoctorId?: string;
   isGuest?: boolean;
+  initialData?: BookingInitialData;
 }) {
   // check for stored booking data (after guest signup flow)
   const storedBooking = useMemo(() => {
@@ -176,7 +204,11 @@ export default function BookingForm({
   const [now, setNow] = useState(() => new Date());
   const [error, setError] = useState<string | null>(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(
-    () => storedBooking?.booking?.doctorId || initialDoctorId || ""
+    () =>
+      storedBooking?.booking?.doctorId ||
+      initialData?.doctorId ||
+      initialDoctorId ||
+      ""
   );
 
   // editable contact info for guests
@@ -200,20 +232,27 @@ export default function BookingForm({
         return parsed;
       }
     }
+    if (initialData?.date) {
+      return initialData.date;
+    }
     return minSelectableDate;
-  }, [storedBooking, minSelectableDate]);
+  }, [storedBooking, minSelectableDate, initialData]);
 
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
   const [currentMonth, setCurrentMonth] = useState<Date>(initialDate);
   const [selectedTime, setSelectedTime] = useState<string>(
-    () => storedBooking?.booking?.time || ""
+    () => storedBooking?.booking?.time || initialData?.time || ""
   );
-  const [storedNotes] = useState<string>(
-    () => storedBooking?.booking?.notes || ""
+  const [notes, setNotes] = useState<string>(
+    () => storedBooking?.booking?.notes || initialData?.notes || ""
   );
+
   const [takenTimes, setTakenTimes] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [doctorModalOpen, setDoctorModalOpen] = useState(false);
+
+  // Stepper state
+  const [step, setStep] = useState(1);
+
   const [search, setSearch] = useState("");
   const [specialtyFilter, setSpecialtyFilter] = useState("all");
   const [requiresRegistration, setRequiresRegistration] = useState(false);
@@ -241,7 +280,9 @@ export default function BookingForm({
   }, [selectedDate, now]);
 
   // computed check if selected time is still valid
-  const isSelectedTimeAvailable = selectedTime ? availableSlots.includes(selectedTime) : true;
+  const isSelectedTimeAvailable = selectedTime
+    ? availableSlots.includes(selectedTime)
+    : true;
 
   const selectedDoctor = doctors.find(
     (doctor) => doctor.id === selectedDoctorId
@@ -340,11 +381,15 @@ export default function BookingForm({
   );
 
   const isSelectedTimeBlocked = Boolean(
-    selectedTime && (takenTimes.includes(selectedTime) || !isSelectedTimeAvailable)
+    selectedTime &&
+      (takenTimes.includes(selectedTime) || !isSelectedTimeAvailable)
   );
 
   const canSubmit = Boolean(
-    selectedDoctorId && selectedTime && !isSelectedTimeBlocked && isSelectedTimeAvailable
+    selectedDoctorId &&
+      selectedTime &&
+      !isSelectedTimeBlocked &&
+      isSelectedTimeAvailable
   );
 
   function handleDaySelect(day: Date) {
@@ -362,6 +407,8 @@ export default function BookingForm({
     setSelectedTime("");
     setTakenTimes([]);
     setSlotsLoading(false);
+    // Auto advance to next step after selection
+    setTimeout(() => setStep(2), 300);
   }
 
   async function handleSubmit(formData: FormData) {
@@ -389,7 +436,7 @@ export default function BookingForm({
 
     // for guests, show registration prompt instead of trying to create appointment
     if (isGuest) {
-      const notes = formData.get("notes") as string || "";
+      const notes = (formData.get("notes") as string) || "";
       setPreConsultData({
         notes,
         doctorId: selectedDoctorId,
@@ -407,7 +454,10 @@ export default function BookingForm({
           time: selectedTime,
         },
       };
-      localStorage.setItem("guestBookingData", JSON.stringify(guestBookingData));
+      localStorage.setItem(
+        "guestBookingData",
+        JSON.stringify(guestBookingData)
+      );
 
       setRequiresRegistration(true);
       setRedirectUrl(`/signup?upgrade=true&next=/book/${selectedDoctorId}`);
@@ -424,23 +474,63 @@ export default function BookingForm({
       if ("requiresRegistration" in res && res.requiresRegistration) {
         setRequiresRegistration(true);
         setRedirectUrl(
-          ("redirectTo" in res && res.redirectTo) || `/signup?upgrade=true&next=/book/${selectedDoctorId}`
+          ("redirectTo" in res && res.redirectTo) ||
+            `/signup?upgrade=true&next=/book/${selectedDoctorId}`
         );
       }
     }
   }
 
-  function closeModal() {
-    setDoctorModalOpen(false);
-    setSearch("");
-    setSpecialtyFilter("all");
-  }
+  // Stepper Logic
+  const steps = [
+    { id: 1, title: "Specialist", icon: Stethoscope },
+    { id: 2, title: "Date & Time", icon: CalendarIcon },
+    { id: 3, title: "Details", icon: Sparkles },
+    ...(isGuest ? [{ id: 4, title: "Contact", icon: UserRound }] : []),
+    { id: isGuest ? 5 : 4, title: "Review", icon: Check },
+  ];
+
+  const totalSteps = steps.length;
+
+  const nextStep = () => {
+    if (step === 1 && !selectedDoctorId) {
+      toast.error("Please select a specialist to continue");
+      return;
+    }
+    if (step === 2 && (!selectedDate || !selectedTime)) {
+      toast.error("Please select a date and time");
+      return;
+    }
+    if (step === 3 && !notes.trim()) {
+      toast.error("Please describe your reason for visit");
+      return;
+    }
+    if (isGuest && step === 4) {
+      if (
+        !guestContact.firstName ||
+        !guestContact.lastName ||
+        !guestContact.email
+      ) {
+        toast.error("Please fill in your contact details");
+        return;
+      }
+    }
+    setStep((s) => Math.min(s + 1, totalSteps));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const prevStep = () => {
+    setStep((s) => Math.max(s - 1, 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // show registration prompt for guests
   if (requiresRegistration) {
-    const selectedDoctor = doctors.find((d) => d.id === preConsultData?.doctorId);
+    const selectedDoctor = doctors.find(
+      (d) => d.id === preConsultData?.doctorId
+    );
     return (
-      <div className="rounded-3xl border border-blue-100 bg-white/70 backdrop-blur-sm p-8 shadow-sm">
+      <div className="rounded-3xl border border-blue-100 bg-white/70 backdrop-blur-sm p-8 shadow-sm max-w-xl mx-auto">
         <div className="text-center space-y-6">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
             <UserPlus className="w-10 h-10 text-green-600" />
@@ -450,23 +540,41 @@ export default function BookingForm({
               Your Pre-Consultation is Saved
             </h3>
             <p className="text-slate-600 max-w-md mx-auto">
-              Create an account to complete your booking and access all CareLink features.
+              Create an account to complete your booking and access all CareLink
+              features.
             </p>
           </div>
 
           {/* show saved consultation details */}
           {preConsultData && (
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-left max-w-md mx-auto">
-              <p className="text-sm font-medium text-blue-900 mb-2">Saved consultation details:</p>
+              <p className="text-sm font-medium text-blue-900 mb-2">
+                Saved consultation details:
+              </p>
               <div className="space-y-1 text-sm text-blue-800">
                 {selectedDoctor && (
-                  <p>Doctor: <span className="font-medium">{selectedDoctor.name}</span></p>
+                  <p>
+                    Doctor:{" "}
+                    <span className="font-medium">{selectedDoctor.name}</span>
+                  </p>
                 )}
-                <p>Date: <span className="font-medium">{preConsultData.date}</span></p>
-                <p>Time: <span className="font-medium">{formatSlotLabel(preConsultData.time)}</span></p>
+                <p>
+                  Date:{" "}
+                  <span className="font-medium">{preConsultData.date}</span>
+                </p>
+                <p>
+                  Time:{" "}
+                  <span className="font-medium">
+                    {formatSlotLabel(preConsultData.time)}
+                  </span>
+                </p>
                 {preConsultData.notes && (
                   <p className="mt-2 pt-2 border-t border-blue-200">
-                    Notes: <span className="text-blue-700">{preConsultData.notes.slice(0, 100)}{preConsultData.notes.length > 100 ? "..." : ""}</span>
+                    Notes:{" "}
+                    <span className="text-blue-700">
+                      {preConsultData.notes.slice(0, 100)}
+                      {preConsultData.notes.length > 100 ? "..." : ""}
+                    </span>
                   </p>
                 )}
               </div>
@@ -504,41 +612,218 @@ export default function BookingForm({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-8">
+    <form
+      action={handleSubmit}
+      className="max-w-4xl mx-auto min-h-screen pb-32 md:pb-10"
+    >
+      {/* Hidden Inputs */}
       <input type="hidden" name="doctorId" value={selectedDoctorId} />
       <input type="hidden" name="date" value={dateFieldValue} />
       <input type="hidden" name="time" value={selectedTime} />
+      <input type="hidden" name="notes" value={notes} />
+      {isGuest && (
+        <>
+          <input
+            type="hidden"
+            name="guestFirstName"
+            value={guestContact.firstName}
+          />
+          <input
+            type="hidden"
+            name="guestLastName"
+            value={guestContact.lastName}
+          />
+          <input type="hidden" name="guestEmail" value={guestContact.email} />
+          <input type="hidden" name="guestPhone" value={guestContact.phone} />
+        </>
+      )}
+
       {error && (
-        <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-2xl">
+        <div className="mb-6 p-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <Info className="w-4 h-4 shrink-0" />
           {error}
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-6">
-          <section className="rounded-3xl border border-blue-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-12 w-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                <CalendarIcon className="h-5 w-5" />
+      {/* Header - Only visible on Step 1 */}
+      {step === 1 && (
+        <div className="text-center space-y-3 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <p className="text-xs tracking-[0.3em] uppercase text-blue-500 font-bold">
+            CareLink Booking
+          </p>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
+            Schedule your consultation
+          </h1>
+          <p className="text-slate-500 max-w-md mx-auto leading-relaxed">
+            Choose from {doctors.length} trusted specialists to get started.
+          </p>
+        </div>
+      )}
+
+      {/* Modern Segmented Stepper */}
+      <div className="mb-8 sticky top-0 z-20 bg-white/80 backdrop-blur-md py-4 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent md:backdrop-blur-none transition-all">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {steps[step - 1].icon &&
+              (() => {
+                const Icon = steps[step - 1].icon;
+                return (
+                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                );
+              })()}
+            <span className="text-sm font-bold text-slate-900">
+              {steps[step - 1].title}
+            </span>
+          </div>
+          <span className="text-xs font-medium text-slate-400">
+            Step {step} of {totalSteps}
+          </span>
+        </div>
+        <div className="flex gap-1.5">
+          {steps.map((s) => (
+            <div
+              key={s.id}
+              className={cn(
+                "h-1.5 flex-1 rounded-full transition-all duration-500",
+                s.id <= step ? "bg-blue-600" : "bg-slate-100"
+              )}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="min-h-[300px]">
+        {/* Step 1: Doctor Selection */}
+        {step === 1 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <div className="flex flex-col md:flex-row gap-3 mb-2">
+              <div className="relative flex-1">
+                <Input
+                  placeholder="Search doctors..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="pl-10 rounded-2xl h-12 bg-slate-50 border-transparent focus:bg-white transition-all"
+                />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               </div>
-              <div>
-                <p className="text-sm uppercase tracking-wide text-blue-500 font-semibold">
-                  Select Date
-                </p>
-                <h3 className="text-xl font-semibold text-slate-900">
-                  Choose the perfect time
-                </h3>
-                <p className="text-sm text-slate-500">
-                  Pick a date and time that works best for your consultation.
-                </p>
+              <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar mask-linear-fade">
+                {specialties.map((specialty) => (
+                  <button
+                    key={specialty}
+                    type="button"
+                    onClick={() => setSpecialtyFilter(specialty)}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all hover:cursor-pointer border",
+                      specialtyFilter === specialty
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    {specialty === "all" ? "All" : specialty}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-3">
-                <Label>Calendar</Label>
-                <div className="rounded-2xl border border-blue-100 p-4">
-                  <div className="flex items-center justify-between mb-4">
+            {filteredDoctors.length === 0 ? (
+              <div className="text-center text-slate-500 py-12 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                No doctors match your search.
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {filteredDoctors.map((doctor) => (
+                  <button
+                    key={doctor.id}
+                    type="button"
+                    onClick={() => handleDoctorSelection(doctor.id)}
+                    className={cn(
+                      "text-left rounded-2xl p-4 flex gap-4 transition-all hover:cursor-pointer group relative overflow-hidden",
+                      selectedDoctorId === doctor.id
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-200 scale-[1.02]"
+                        : "bg-white border border-slate-100 hover:border-blue-200 hover:shadow-md"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "h-14 w-14 rounded-xl overflow-hidden shrink-0",
+                        selectedDoctorId === doctor.id
+                          ? "bg-white/20"
+                          : "bg-blue-50"
+                      )}
+                    >
+                      <Image
+                        src={
+                          doctor.image_url ||
+                          "https://placehold.co/96x96?text=Dr"
+                        }
+                        alt={doctor.name}
+                        width={56}
+                        height={56}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={cn(
+                          "text-xs uppercase tracking-wide font-bold mb-0.5",
+                          selectedDoctorId === doctor.id
+                            ? "text-blue-100"
+                            : "text-blue-500"
+                        )}
+                      >
+                        {doctor.specialty}
+                      </p>
+                      <p
+                        className={cn(
+                          "text-base font-bold truncate",
+                          selectedDoctorId === doctor.id
+                            ? "text-white"
+                            : "text-slate-900"
+                        )}
+                      >
+                        {doctor.name}
+                      </p>
+                      <p
+                        className={cn(
+                          "text-xs line-clamp-1",
+                          selectedDoctorId === doctor.id
+                            ? "text-blue-100"
+                            : "text-slate-500"
+                        )}
+                      >
+                        {doctor.bio || "Available for consultation"}
+                      </p>
+                    </div>
+                    {selectedDoctorId === doctor.id && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 p-1.5 rounded-full">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Date & Time */}
+        {step === 2 && (
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 grid md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold text-slate-900 ml-1">
+                Select Date
+              </Label>
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <span className="font-semibold text-slate-900">
+                    {currentMonth.toLocaleDateString("en-US", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <div className="flex gap-1">
                     <Button
                       type="button"
                       variant="ghost"
@@ -550,18 +835,10 @@ export default function BookingForm({
                         )
                       }
                       disabled={!canGoToPreviousMonth}
-                      className="rounded-full"
+                      className="h-8 w-8 rounded-full hover:bg-white"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-slate-900">
-                        {currentMonth.toLocaleDateString("en-US", {
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </p>
-                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -572,12 +849,15 @@ export default function BookingForm({
                             new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
                         )
                       }
-                      className="rounded-full"
+                      className="h-8 w-8 rounded-full hover:bg-white"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="grid grid-cols-7 text-center text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                </div>
+
+                <div className="p-4">
+                  <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                     {"SunMonTueWedThuFriSat".match(/.{1,3}/g)?.map((day) => (
                       <div key={day}>{day}</div>
                     ))}
@@ -590,25 +870,21 @@ export default function BookingForm({
                       const isSelected = isSameDay(day, selectedDate);
                       const isOutsideMonth =
                         day.getMonth() !== currentMonth.getMonth();
+
                       return (
                         <button
                           key={day.toISOString()}
                           type="button"
                           disabled={isDisabled}
                           onClick={() => handleDaySelect(day)}
-                          className={`h-12 rounded-xl border text-sm transition ${
+                          className={cn(
+                            "aspect-square rounded-xl text-sm font-medium transition-all flex items-center justify-center relative",
                             isSelected
-                              ? "bg-blue-600 text-white border-blue-600"
-                              : "bg-white text-slate-700 border-slate-200"
-                          } ${
-                            isDisabled
-                              ? "opacity-40 cursor-not-allowed"
-                              : "hover:border-blue-400 hover:text-blue-600 hover:cursor-pointer"
-                          } ${
-                            isOutsideMonth && !isSelected
-                              ? "text-slate-400"
-                              : ""
-                          }`}
+                              ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                              : "text-slate-700 hover:bg-slate-50",
+                            isDisabled && "opacity-20 cursor-not-allowed",
+                            isOutsideMonth && !isSelected && "text-slate-300"
+                          )}
                         >
                           {day.getDate()}
                         </button>
@@ -617,419 +893,288 @@ export default function BookingForm({
                   </div>
                 </div>
               </div>
-              <div className="space-y-3">
-                <Label>Pick a time</Label>
-                <div className="rounded-2xl border border-blue-100 p-4 space-y-4">
-                  {!selectedDoctorId && (
-                    <p className="text-sm text-slate-500">
-                      Select a doctor to see their available times.
-                    </p>
-                  )}
-                  {selectedDoctorId && (
-                    <>
-                      <p className="text-sm text-slate-500">
-                        Choose a slot between 10:00 AM and 5:00 PM.
-                      </p>
-                      <div className="flex flex-wrap gap-3">
-                        {availableSlots.length === 0 ? (
-                          <p className="text-sm text-slate-500">
-                            No available time slots for this date.
-                          </p>
-                        ) : (
-                          availableSlots.map((slot) => {
-                            const isTaken = takenTimes.includes(slot);
-                            const disabled = !selectedDoctorId || isTaken;
-                            const isActive = selectedTime === slot;
-                            return (
-                              <button
-                                key={slot}
-                                type="button"
-                                disabled={disabled}
-                                onClick={() => {
-                                  setSelectedTime(slot);
-                                  setError(null);
-                                }}
-                                className={`px-4 py-2 rounded-full text-sm border transition ${
-                                  isActive
-                                    ? "bg-blue-600 text-white border-blue-600"
-                                    : "bg-white text-slate-700 border-slate-200"
-                                } ${
-                                  disabled
-                                    ? "opacity-40 cursor-not-allowed"
-                                    : "hover:border-blue-400 hover:text-blue-600 hover:cursor-pointer"
-                                }`}
-                              >
-                                {formatSlotLabel(slot)}
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {slotsLoading
-                          ? "Checking doctor availability..."
-                          : takenTimes.length > 0
-                          ? `Already booked: ${takenTimes
-                              .map((slot) => formatSlotLabel(slot))
-                              .join(", ")}`
-                          : "All slots are currently open."}
-                      </div>
-                      {isSelectedTimeBlocked && (
-                        <div className="text-sm text-red-500">
-                          That slot was just booked. Please choose another time.
-                        </div>
-                      )}
-                    </>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-base font-semibold text-slate-900 ml-1">
+                Available Times
+              </Label>
+              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 min-h-[320px]">
+                <div className="grid grid-cols-3 gap-2">
+                  {availableSlots.length === 0 ? (
+                    <div className="col-span-full text-center py-12 text-slate-400">
+                      No slots available
+                    </div>
+                  ) : (
+                    availableSlots.map((slot) => {
+                      const isTaken = takenTimes.includes(slot);
+                      const disabled = !selectedDoctorId || isTaken;
+                      const isActive = selectedTime === slot;
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => {
+                            setSelectedTime(slot);
+                            setError(null);
+                          }}
+                          className={cn(
+                            "py-3 px-2 rounded-xl text-sm font-medium border transition-all",
+                            isActive
+                              ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200"
+                              : "bg-white text-slate-700 border-slate-200 hover:border-blue-300",
+                            disabled &&
+                              "opacity-40 cursor-not-allowed bg-slate-50"
+                          )}
+                        >
+                          {formatSlotLabel(slot)}
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </div>
             </div>
-          </section>
+          </div>
+        )}
 
-          <section className="rounded-3xl border border-blue-100 bg-white/70 backdrop-blur-sm p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
-                <Sparkles className="h-5 w-5" />
+        {/* Step 3: Details */}
+        {step === 3 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <div className="bg-white rounded-3xl border border-slate-200 p-1 shadow-sm">
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Please describe your symptoms or reason for visit..."
+                rows={8}
+                className="rounded-[20px] border-0 focus-visible:ring-0 resize-none text-base p-4 placeholder:text-slate-400"
+              />
+            </div>
+            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-2xl text-blue-700 text-sm">
+              <Info className="w-5 h-5 shrink-0 mt-0.5" />
+              <p>
+                Your notes are encrypted and only visible to your doctor. Please
+                be as detailed as possible.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Contact (Guest Only) */}
+        {isGuest && step === 4 && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>First Name</Label>
+                <Input
+                  value={guestContact.firstName}
+                  onChange={(e) =>
+                    setGuestContact({
+                      ...guestContact,
+                      firstName: e.target.value,
+                    })
+                  }
+                  placeholder="Jane"
+                  className="rounded-2xl h-12 bg-white"
+                />
               </div>
-              <div>
-                <p className="text-sm uppercase tracking-wide text-slate-500 font-semibold">
-                  Consultation Details
-                </p>
-                <h3 className="text-xl font-semibold text-slate-900">
-                  Tell us about your visit
-                </h3>
-                <p className="text-sm text-slate-500">
-                  A short description helps your doctor prepare ahead of time.
-                </p>
+              <div className="space-y-2">
+                <Label>Last Name</Label>
+                <Input
+                  value={guestContact.lastName}
+                  onChange={(e) =>
+                    setGuestContact({
+                      ...guestContact,
+                      lastName: e.target.value,
+                    })
+                  }
+                  placeholder="Doe"
+                  className="rounded-2xl h-12 bg-white"
+                />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Reason for visit</Label>
-              <Textarea
-                id="notes"
-                name="notes"
-                placeholder="Describe your symptoms, concerns, or consultation goals..."
-                rows={6}
-                required
-                className="rounded-2xl"
-                defaultValue={storedNotes}
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={guestContact.email}
+                onChange={(e) =>
+                  setGuestContact({ ...guestContact, email: e.target.value })
+                }
+                placeholder="jane@example.com"
+                className="rounded-2xl h-12 bg-white"
               />
             </div>
-          </section>
-        </div>
 
-        <div className="space-y-6">
-          {/* guest banner */}
-          {isGuest && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <div className="flex items-start gap-3">
-                <UserPlus className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium text-amber-900">Browsing as guest</p>
-                  <p className="text-sm text-amber-700">
-                    Fill out the form below. You&apos;ll create an account when you&apos;re ready to book.
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input
+                type="tel"
+                value={guestContact.phone}
+                onChange={(e) =>
+                  setGuestContact({ ...guestContact, phone: e.target.value })
+                }
+                placeholder="+1 (555) 000-0000"
+                className="rounded-2xl h-12 bg-white"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 5 (or 4): Review */}
+        {step === totalSteps && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm divide-y divide-slate-100">
+              {/* Doctor Summary */}
+              <div className="p-5 flex items-center gap-4">
+                <div className="h-14 w-14 rounded-xl overflow-hidden bg-blue-50 shrink-0">
+                  <Image
+                    src={
+                      selectedDoctor?.image_url ||
+                      "https://placehold.co/96x96?text=Dr"
+                    }
+                    alt={selectedDoctor?.name || "Doctor"}
+                    width={56}
+                    height={56}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs uppercase tracking-wide text-blue-500 font-bold">
+                    Specialist
+                  </p>
+                  <p className="text-base font-bold text-slate-900 truncate">
+                    {selectedDoctor?.name}
                   </p>
                 </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
+                  onClick={() => setStep(1)}
+                >
+                  Change
+                </Button>
               </div>
-            </div>
-          )}
 
-          <section className="rounded-3xl border border-blue-100 bg-white/80 backdrop-blur-sm p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                <UserRound className="h-5 w-5" />
+              {/* Date & Time Summary */}
+              <div className="p-5 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0 text-blue-600">
+                  <CalendarIcon className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-500">
+                    Date & Time
+                  </p>
+                  <p className="text-base font-semibold text-slate-900">
+                    {selectedDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}{" "}
+                    at {selectedTime ? formatSlotLabel(selectedTime) : ""}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
+                  onClick={() => setStep(2)}
+                >
+                  Change
+                </Button>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">
-                  Contact Information
-                </h3>
-                <p className="text-sm text-slate-500">
-                  {isGuest ? "Enter your details for the consultation." : "We'll use this to confirm your appointment."}
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>First Name</Label>
-                {isGuest ? (
-                  <Input
-                    name="guestFirstName"
-                    value={guestContact.firstName}
-                    onChange={(e) => setGuestContact({ ...guestContact, firstName: e.target.value })}
-                    placeholder="Your first name"
-                    className="rounded-2xl"
-                  />
-                ) : (
-                  <Input
-                    value={contactInfo.firstName}
-                    readOnly
-                    className="rounded-2xl bg-slate-50"
-                  />
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Last Name</Label>
-                {isGuest ? (
-                  <Input
-                    name="guestLastName"
-                    value={guestContact.lastName}
-                    onChange={(e) => setGuestContact({ ...guestContact, lastName: e.target.value })}
-                    placeholder="Your last name"
-                    className="rounded-2xl"
-                  />
-                ) : (
-                  <Input
-                    value={contactInfo.lastName}
-                    readOnly
-                    className="rounded-2xl bg-slate-50"
-                  />
-                )}
-              </div>
-            </div>
-            <div className="space-y-1.5 mt-4">
-              <Label>Email Address</Label>
-              <div className="relative">
-                {isGuest ? (
-                  <>
-                    <Input
-                      name="guestEmail"
-                      type="email"
-                      value={guestContact.email}
-                      onChange={(e) => setGuestContact({ ...guestContact, email: e.target.value })}
-                      placeholder="your.email@example.com"
-                      className="pl-12 rounded-2xl"
-                    />
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  </>
-                ) : (
-                  <>
-                    <Input
-                      value={contactInfo.email}
-                      readOnly
-                      className="pl-12 rounded-2xl bg-slate-50"
-                    />
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="space-y-1.5 mt-4">
-              <Label>Phone Number</Label>
-              <div className="relative">
-                {isGuest ? (
-                  <>
-                    <Input
-                      name="guestPhone"
-                      type="tel"
-                      value={guestContact.phone}
-                      onChange={(e) => setGuestContact({ ...guestContact, phone: e.target.value })}
-                      placeholder="+63 917 123 4567"
-                      className="pl-12 rounded-2xl"
-                    />
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  </>
-                ) : (
-                  <>
-                    <Input
-                      value={contactInfo.phone || "Not provided"}
-                      readOnly
-                      className="pl-12 rounded-2xl bg-slate-50"
-                    />
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  </>
-                )}
-              </div>
-            </div>
-          </section>
 
-          <section className="rounded-3xl border border-blue-100 bg-white/80 backdrop-blur-sm p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                <Stethoscope className="h-5 w-5" />
+              {/* Notes Summary */}
+              <div className="p-5 flex items-start gap-4">
+                <div className="h-10 w-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0 text-purple-600">
+                  <Info className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-500">Notes</p>
+                  <p className="text-sm text-slate-700 mt-1 line-clamp-2">
+                    {notes || "No notes provided"}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
+                  onClick={() => setStep(3)}
+                >
+                  Edit
+                </Button>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">Doctor</h3>
-                <p className="text-sm text-slate-500">
-                  Choose the specialist you want to meet.
-                </p>
-              </div>
-            </div>
 
-            <div className="border border-dashed border-blue-200 rounded-2xl p-4 mb-4 bg-blue-50/40">
-              {selectedDoctor ? (
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl overflow-hidden bg-blue-100">
-                    <Image
-                      src={
-                        selectedDoctor.image_url ||
-                        "https://placehold.co/80x80?text=Dr"
-                      }
-                      alt={selectedDoctor.name}
-                      width={56}
-                      height={56}
-                      className="h-full w-full object-cover"
-                    />
+              {/* Guest Contact Summary */}
+              {isGuest && (
+                <div className="p-5 flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0 text-amber-600">
+                    <UserRound className="h-5 w-5" />
                   </div>
-                  <div>
-                    <p className="text-sm uppercase tracking-wide text-blue-500 font-semibold">
-                      Selected Specialist
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-500">
+                      Contact
                     </p>
-                    <p className="text-lg font-semibold text-slate-900">
-                      {selectedDoctor.name}
+                    <p className="text-base font-semibold text-slate-900 truncate">
+                      {guestContact.firstName} {guestContact.lastName}
                     </p>
-                    <p className="text-sm text-slate-500">
-                      {selectedDoctor.specialty}
+                    <p className="text-xs text-slate-500 truncate">
+                      {guestContact.email}
                     </p>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center text-slate-500 text-sm">
-                  No doctor selected yet. Browse our specialists to get started.
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <Button
-                type="button"
-                onClick={() => setDoctorModalOpen(true)}
-                disabled={doctors.length === 0}
-                className="w-full bg-blue-600 hover:bg-blue-700 hover:cursor-pointer"
-              >
-                {selectedDoctor ? "Change Doctor" : "Browse Doctors"}
-              </Button>
-              {selectedDoctor && (
-                <p className="text-xs text-slate-500 text-center">
-                  Prefer someone else? You can always switch doctors here.
-                </p>
-              )}
-              {doctors.length === 0 && (
-                <p className="text-xs text-red-500 text-center">
-                  No doctors are available right now. Please check back soon.
-                </p>
-              )}
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-blue-100 bg-white/80 backdrop-blur-sm p-6 shadow-sm">
-        <SubmitButton canSubmit={canSubmit} isGuest={isGuest} />
-        {isGuest && (
-          <p className="text-center text-xs text-slate-500 mt-3">
-            You&apos;ll be prompted to create an account to complete your booking.
-          </p>
-        )}
-      </div>
-
-      {doctorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="absolute inset-0 bg-slate-900/50"
-            onClick={closeModal}
-          />
-          <div className="relative z-10 w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-blue-100 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-blue-50">
-              <div>
-                <p className="text-sm uppercase tracking-wide text-blue-500 font-semibold">
-                  Our Care Team
-                </p>
-                <h3 className="text-xl font-semibold text-slate-900">
-                  Select a specialist
-                </h3>
-              </div>
-              <button
-                onClick={closeModal}
-                className="text-slate-500 hover:text-slate-900 hover:cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 overflow-y-auto">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="Search by name or specialty"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    className="pl-11 rounded-2xl"
-                  />
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {specialties.map((specialty) => (
-                    <button
-                      key={specialty}
-                      type="button"
-                      onClick={() => setSpecialtyFilter(specialty)}
-                      className={`px-4 py-2 rounded-full text-sm border hover:cursor-pointer ${
-                        specialtyFilter === specialty
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-white text-slate-600 border-slate-200"
-                      }`}
-                    >
-                      {specialty === "all" ? "All" : specialty}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {filteredDoctors.length === 0 ? (
-                <div className="text-center text-slate-500 py-12">
-                  No doctors match your search. Try a different specialty or
-                  name.
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {filteredDoctors.map((doctor) => (
-                    <button
-                      key={doctor.id}
-                      type="button"
-                      onClick={() => {
-                        handleDoctorSelection(doctor.id);
-                        setError(null);
-                        closeModal();
-                      }}
-                      className={`text-left rounded-2xl border transition shadow-sm hover:shadow-lg p-4 flex gap-4 hover:cursor-pointer ${
-                        selectedDoctorId === doctor.id
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-slate-200 bg-white"
-                      }`}
-                    >
-                      <div className="h-16 w-16 rounded-2xl overflow-hidden bg-blue-100 shrink-0">
-                        <Image
-                          src={
-                            doctor.image_url ||
-                            "https://placehold.co/96x96?text=Dr"
-                          }
-                          alt={doctor.name}
-                          width={64}
-                          height={64}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <div>
-                        <p className="text-sm uppercase tracking-wide text-blue-500 font-semibold">
-                          {doctor.specialty}
-                        </p>
-                        <p className="text-lg font-semibold text-slate-900">
-                          {doctor.name}
-                        </p>
-                        <p className="text-sm text-slate-500 line-clamp-2">
-                          {doctor.bio ||
-                            "Experienced specialist ready to support your care."}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-blue-600 hover:bg-blue-50 rounded-full px-3"
+                    onClick={() => setStep(4)}
+                  >
+                    Edit
+                  </Button>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Navigation Buttons */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-slate-200 z-50 md:static md:bg-transparent md:p-0 md:border-0 md:mt-8 flex items-center justify-between">
+        {step > 1 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={prevStep}
+            className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl px-4 h-12 text-base font-medium"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        ) : (
+          <div></div> // Spacer
+        )}
+
+        {step < totalSteps ? (
+          <Button
+            type="button"
+            onClick={nextStep}
+            className="bg-blue-600 hover:bg-slate-800 text-white rounded-xl px-6 h-12 text-base font-semibold shadow-lg shadow-slate-200 transition-all hover:scale-105 active:scale-95"
+          >
+            Next
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        ) : (
+          <div className="w-full max-w-[200px] ml-auto">
+            <SubmitButton canSubmit={canSubmit} isGuest={isGuest} />
+          </div>
+        )}
+      </div>
     </form>
   );
 }
