@@ -40,15 +40,20 @@ import {
   orderMedication,
 } from "./actions";
 
-type PatientAppointment = {
+type OwnerAppointment = {
   id: string;
-  date: string;
+  scheduled_at: string;
   status: string;
-  notes?: string | null;
-  doctors: {
+  vet_notes?: string | null;
+  veterinarians: {
     name: string;
     specialty: string;
   };
+  pets?: {
+    id: string;
+    name: string;
+    species: string;
+  } | null;
 };
 
 type Prescription = {
@@ -67,16 +72,21 @@ type MedicationOrder = {
   ordered_at: string;
 };
 
-type DoctorAppointment = {
+type VetAppointment = {
   id: string;
-  date: string;
+  scheduled_at: string;
   status: string;
-  notes?: string | null;
-  patient?: {
+  vet_notes?: string | null;
+  owner?: {
     full_name?: string;
     email?: string;
     id?: string;
   };
+  pets?: {
+    id: string;
+    name: string;
+    species: string;
+  } | null;
 };
 
 interface DashboardClientProps {
@@ -93,15 +103,15 @@ interface DashboardClientProps {
     id?: string;
     full_name?: string;
   } | null;
-  patientAppointments: PatientAppointment[];
+  patientAppointments: OwnerAppointment[];
   prescriptions: Prescription[];
   medicationOrders: MedicationOrder[];
-  doctorAppointments: DoctorAppointment[];
+  doctorAppointments: VetAppointment[];
   doctorProfile: {
     specialty?: string;
     name?: string;
   } | null;
-  latestAppointment: PatientAppointment | null;
+  latestAppointment: OwnerAppointment | null;
   showSuccess: boolean;
 }
 
@@ -128,8 +138,9 @@ export function DashboardClient({
   } | null>(null);
   const [prescriptionModal, setPrescriptionModal] = useState<{
     open: boolean;
-    patientId: string;
-    patientName: string;
+    petId: string;
+    ownerId: string;
+    petName: string;
   } | null>(null);
   const [notes, setNotes] = useState("");
   const [prescriptionData, setPrescriptionData] = useState({
@@ -156,11 +167,11 @@ export function DashboardClient({
   const userEmail = user.email || "";
 
   const upcomingPatientAppointments = patientAppointments.filter(
-    (apt) => new Date(apt.date) >= new Date() && apt.status !== "completed"
+    (apt) => new Date(apt.scheduled_at) >= new Date() && apt.status !== "completed"
   );
   const pastAppointments = patientAppointments
     .filter(
-      (apt) => new Date(apt.date) < new Date() || apt.status === "completed"
+      (apt) => new Date(apt.scheduled_at) < new Date() || apt.status === "completed"
     )
     .slice(0, 5);
   const refillReminders = prescriptions
@@ -168,7 +179,7 @@ export function DashboardClient({
     .slice(0, 3);
 
   const doctorAppointmentsToday = doctorAppointments.filter((appt) => {
-    const apptDate = new Date(appt.date);
+    const apptDate = new Date(appt.scheduled_at);
     const now = new Date();
     return apptDate.toDateString() === now.toDateString();
   });
@@ -202,7 +213,8 @@ export function DashboardClient({
     if (!prescriptionModal || !prescriptionData.medication.trim()) return;
     setIsSubmitting(true);
     await createPrescription({
-      patientId: prescriptionModal.patientId,
+      petId: prescriptionModal.petId,
+      ownerId: prescriptionModal.ownerId,
       medicationName: prescriptionData.medication,
       dosage: prescriptionData.dosage,
       instructions: prescriptionData.instructions,
@@ -289,7 +301,7 @@ export function DashboardClient({
                 </button>
               </div>
               <CardDescription>
-                For: {prescriptionModal.patientName}
+                For: {prescriptionModal.petName}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -450,15 +462,15 @@ export function DashboardClient({
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">
-                            {apt.patient?.full_name || "Patient"}
+                            {apt.owner?.full_name || "Pet Owner"}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            {apt.patient?.email}
+                            {apt.pets?.name ? `${apt.pets.name} (${apt.pets.species})` : apt.owner?.email}
                           </p>
                           <div className="flex items-center gap-3 text-sm text-gray-500 mt-2">
                             <div className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
-                              {new Date(apt.date).toLocaleTimeString([], {
+                              {new Date(apt.scheduled_at).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -486,7 +498,7 @@ export function DashboardClient({
                                 open: true,
                                 appointmentId: apt.id,
                                 patientName:
-                                  apt.patient?.full_name || "Patient",
+                                  apt.pets?.name || apt.owner?.full_name || "Pet",
                               })
                             }
                           >
@@ -500,9 +512,10 @@ export function DashboardClient({
                             onClick={() =>
                               setPrescriptionModal({
                                 open: true,
-                                patientId: apt.patient?.id || "",
-                                patientName:
-                                  apt.patient?.full_name || "Patient",
+                                petId: apt.pets?.id || "",
+                                ownerId: apt.owner?.id || "",
+                                petName:
+                                  apt.pets?.name || "Pet",
                               })
                             }
                           >
@@ -547,11 +560,11 @@ export function DashboardClient({
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">
-                              {apt.patient?.full_name || "Patient"}
+                              {apt.owner?.full_name || "Pet Owner"}
                             </p>
                             <p className="text-sm text-gray-500">
-                              {new Date(apt.date).toLocaleDateString()} at{" "}
-                              {new Date(apt.date).toLocaleTimeString([], {
+                              {new Date(apt.scheduled_at).toLocaleDateString()} at{" "}
+                              {new Date(apt.scheduled_at).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -581,7 +594,7 @@ export function DashboardClient({
                                     open: true,
                                     appointmentId: apt.id,
                                     patientName:
-                                      apt.patient?.full_name || "Patient",
+                                      apt.pets?.name || apt.owner?.full_name || "Pet",
                                   })
                                 }
                                 className="hover:cursor-pointer"
@@ -594,9 +607,10 @@ export function DashboardClient({
                                 onClick={() =>
                                   setPrescriptionModal({
                                     open: true,
-                                    patientId: apt.patient?.id || "",
-                                    patientName:
-                                      apt.patient?.full_name || "Patient",
+                                    petId: apt.pets?.id || "",
+                                    ownerId: apt.owner?.id || "",
+                                    petName:
+                                      apt.pets?.name || "Pet",
                                   })
                                 }
                                 className="hover:cursor-pointer"
@@ -638,10 +652,10 @@ export function DashboardClient({
                     >
                       <div>
                         <p className="font-medium text-gray-900">
-                          {apt.patient?.full_name || "Patient"}
+                          {apt.owner?.full_name || "Pet Owner"}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {new Date(apt.date).toLocaleTimeString([], {
+                          {new Date(apt.scheduled_at).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
@@ -722,10 +736,10 @@ export function DashboardClient({
                       <div className="flex flex-col sm:flex-row">
                         <div className="bg-blue-50 p-6 flex flex-col items-center justify-center min-w-[120px] border-b sm:border-b-0 sm:border-r border-blue-100">
                           <span className="text-3xl font-bold text-blue-600">
-                            {new Date(apt.date).getDate()}
+                            {new Date(apt.scheduled_at).getDate()}
                           </span>
                           <span className="text-sm font-medium text-blue-900 uppercase">
-                            {new Date(apt.date).toLocaleString("default", {
+                            {new Date(apt.scheduled_at).toLocaleString("default", {
                               month: "short",
                             })}
                           </span>
@@ -733,15 +747,20 @@ export function DashboardClient({
                         <div className="p-6 flex-1 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                           <div>
                             <h3 className="font-bold text-lg text-gray-900">
-                              {apt.doctors.name}
+                              {apt.veterinarians.name}
                             </h3>
                             <p className="text-blue-600 text-sm font-medium mb-2">
-                              {apt.doctors.specialty}
+                              {apt.veterinarians.specialty}
                             </p>
+                            {apt.pets && (
+                              <p className="text-sm text-gray-600 mb-2">
+                                Pet: {apt.pets.name} ({apt.pets.species})
+                              </p>
+                            )}
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <div className="flex items-center gap-1">
                                 <Clock className="h-4 w-4" />
-                                {new Date(apt.date).toLocaleTimeString([], {
+                                {new Date(apt.scheduled_at).toLocaleTimeString([], {
                                   hour: "2-digit",
                                   minute: "2-digit",
                                 })}
@@ -972,20 +991,20 @@ export function DashboardClient({
                               >
                                 <div>
                                   <p className="font-medium text-gray-900">
-                                    {apt.doctors.name}
+                                    {apt.veterinarians.name}
                                   </p>
                                   <p className="text-sm text-gray-500">
-                                    {apt.doctors.specialty}
+                                    {apt.veterinarians.specialty}
                                   </p>
-                                  {apt.notes && (
+                                  {apt.vet_notes && (
                                     <p className="text-xs text-gray-400 mt-1">
-                                      {apt.notes}
+                                      {apt.vet_notes}
                                     </p>
                                   )}
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-gray-700">
-                                    {new Date(apt.date).toLocaleDateString()}
+                                    {new Date(apt.scheduled_at).toLocaleDateString()}
                                   </p>
                                   <Badge
                                     variant="outline"
@@ -1077,10 +1096,10 @@ export function DashboardClient({
                         <Calendar className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
                         <div>
                           <p className="font-medium text-orange-800">
-                            Appt: {apt.doctors.name}
+                            Appt: {apt.veterinarians.name}
                           </p>
                           <p className="text-orange-600">
-                            {new Date(apt.date).toLocaleDateString()}
+                            {new Date(apt.scheduled_at).toLocaleDateString()}
                           </p>
                         </div>
                       </div>

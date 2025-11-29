@@ -2,15 +2,20 @@ import { getDashboardData } from './actions'
 import { redirect } from 'next/navigation'
 import { DashboardClient } from './dashboard-client'
 
-type PatientAppointment = {
+type OwnerAppointment = {
   id: string
-  date: string
+  scheduled_at: string
   status: string
-  notes?: string | null
-  doctors: {
+  vet_notes?: string | null
+  veterinarians: {
     name: string
     specialty: string
   }
+  pets?: {
+    id: string
+    name: string
+    species: string
+  } | null
 }
 
 type Prescription = {
@@ -29,28 +34,33 @@ type MedicationOrder = {
   ordered_at: string
 }
 
-type DoctorAppointment = {
+type VetAppointment = {
   id: string
-  date: string
+  scheduled_at: string
   status: string
-  notes?: string | null
-  patient?: {
+  vet_notes?: string | null
+  owner?: {
     id?: string
     full_name?: string
     email?: string
   }
+  pets?: {
+    id: string
+    name: string
+    species: string
+  } | null
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ booked?: string }> }) {
   const dashboardData = await getDashboardData()
   const user = dashboardData.user
   const profile = dashboardData.profile
-  const patientAppointments = (dashboardData.patientAppointments || []) as PatientAppointment[]
+  const patientAppointments = (dashboardData.patientAppointments || []) as OwnerAppointment[]
   const prescriptions = (dashboardData.prescriptions || []) as Prescription[]
   const medicationOrders = (dashboardData.medicationOrders || []) as MedicationOrder[]
-  const doctorAppointments = (dashboardData.doctorAppointments || []) as DoctorAppointment[]
+  const doctorAppointments = (dashboardData.doctorAppointments || []) as VetAppointment[]
   const doctorProfile = dashboardData.doctorProfile
-  const latestAppointment = dashboardData.latestAppointment as PatientAppointment | null
+  const latestAppointment = dashboardData.latestAppointment as OwnerAppointment | null
 
   if (!user) {
     redirect('/login')

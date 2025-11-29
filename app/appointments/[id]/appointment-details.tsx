@@ -44,21 +44,28 @@ import { createClient as createBrowserClient } from "@/utils/supabase/client";
 
 type Appointment = {
   id: string;
-  date: string;
+  scheduled_at: string;
   status: string;
-  notes?: string | null;
-  reason?: string | null;
-  doctors: {
+  vet_notes?: string | null;
+  symptoms?: string | null;
+  visit_type?: string | null;
+  veterinarians: {
     id: string;
     name: string;
     specialty: string;
     image_url?: string | null;
   };
-  patient: {
+  owner: {
     id: string;
     full_name: string;
     email: string;
   };
+  pets?: {
+    id: string;
+    name: string;
+    species: string;
+    breed?: string | null;
+  } | null;
 };
 
 type Prescription = {
@@ -68,7 +75,7 @@ type Prescription = {
   instructions?: string | null;
   status: string;
   created_at: string;
-  doctors?: {
+  veterinarians?: {
     name: string;
   };
 };
@@ -88,7 +95,7 @@ type ChatMessage = {
 interface AppointmentDetailsProps {
   appointment: Appointment;
   prescriptions: Prescription[];
-  isDoctor: boolean;
+  isVeterinarian: boolean;
   currentUserId: string;
   chatRoom: ChatRoom | null;
   chatMessages: ChatMessage[];
@@ -97,7 +104,7 @@ interface AppointmentDetailsProps {
 export function AppointmentDetails({
   appointment,
   prescriptions,
-  isDoctor,
+  isVeterinarian,
   currentUserId,
   chatRoom,
   chatMessages,
@@ -105,7 +112,7 @@ export function AppointmentDetails({
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [notes, setNotes] = useState(appointment.notes || "");
+  const [notes, setNotes] = useState(appointment.vet_notes || "");
   const [prescriptionData, setPrescriptionData] = useState({
     medication: "",
     dosage: "",
@@ -122,15 +129,15 @@ export function AppointmentDetails({
   const router = useRouter();
   const supabase = useMemo(() => createBrowserClient(), []);
 
-  const appointmentDate = new Date(appointment.date);
+  const appointmentDate = new Date(appointment.scheduled_at);
   const isPast = appointmentDate < new Date();
   const isUpcoming =
     !isPast &&
     appointment.status !== "cancelled" &&
     appointment.status !== "completed";
-  const chatPartnerName = isDoctor
-    ? appointment.patient.full_name
-    : `Dr. ${appointment.doctors.name}`;
+  const chatPartnerName = isVeterinarian
+    ? appointment.owner.full_name
+    : `Dr. ${appointment.veterinarians.name}`;
 
   const statusColors: Record<string, string> = {
     scheduled: "bg-yellow-100 text-yellow-800",
@@ -199,7 +206,8 @@ export function AppointmentDetails({
     setIsSubmitting(true);
     await createPrescription({
       appointmentId: appointment.id,
-      patientId: appointment.patient.id,
+      petId: appointment.pets?.id || "",
+      ownerId: appointment.owner.id,
       medicationName: prescriptionData.medication,
       dosage: prescriptionData.dosage,
       instructions: prescriptionData.instructions,
@@ -270,7 +278,7 @@ export function AppointmentDetails({
                 </button>
               </div>
               <CardDescription>
-                Add notes for {appointment.patient.full_name}
+                Add notes for {appointment.pets?.name || appointment.owner.full_name}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -316,7 +324,7 @@ export function AppointmentDetails({
                 </button>
               </div>
               <CardDescription>
-                For {appointment.patient.full_name}
+                For {appointment.pets?.name || appointment.owner.full_name}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -401,9 +409,9 @@ export function AppointmentDetails({
             <CardContent className="space-y-4">
               <p className="text-gray-600">
                 Are you sure you want to cancel your appointment with{" "}
-                {isDoctor
-                  ? appointment.patient.full_name
-                  : `Dr. ${appointment.doctors.name}`}{" "}
+                {isVeterinarian
+                  ? appointment.owner.full_name
+                  : `Dr. ${appointment.veterinarians.name}`}{" "}
                 on {appointmentDate.toLocaleDateString()} at{" "}
                 {appointmentDate.toLocaleTimeString([], {
                   hour: "2-digit",
@@ -451,9 +459,9 @@ export function AppointmentDetails({
               Appointment Details
             </h1>
             <p className="text-gray-600">
-              {isDoctor
-                ? `Patient: ${appointment.patient.full_name}`
-                : `With Dr. ${appointment.doctors.name}`}
+              {isVeterinarian
+                ? `Pet: ${appointment.pets?.name || "Unknown"} (Owner: ${appointment.owner.full_name})`
+                : `With Dr. ${appointment.veterinarians.name}`}
             </p>
           </div>
           <Badge
@@ -511,18 +519,18 @@ export function AppointmentDetails({
                 </div>
               </div>
 
-              {appointment.reason && (
+              {appointment.symptoms && (
                 <div className="pt-4 border-t">
-                  <p className="text-sm text-gray-500 mb-1">Reason for Visit</p>
-                  <p className="text-gray-700">{appointment.reason}</p>
+                  <p className="text-sm text-gray-500 mb-1">Symptoms</p>
+                  <p className="text-gray-700">{appointment.symptoms}</p>
                 </div>
               )}
 
-              {/* doctor/patient info */}
+              {/* veterinarian/owner info */}
               <div className="pt-4 border-t">
                 <div className="flex items-start gap-4">
                   <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
-                    {isDoctor ? (
+                    {isVeterinarian ? (
                       <User className="h-8 w-8 text-blue-600" />
                     ) : (
                       <Stethoscope className="h-8 w-8 text-blue-600" />
@@ -530,22 +538,27 @@ export function AppointmentDetails({
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">
-                      {isDoctor ? "Patient" : "Doctor"}
+                      {isVeterinarian ? "Pet Owner" : "Veterinarian"}
                     </p>
                     <p className="font-bold text-lg">
-                      {isDoctor
-                        ? appointment.patient.full_name
-                        : `Dr. ${appointment.doctors.name}`}
+                      {isVeterinarian
+                        ? appointment.owner.full_name
+                        : `Dr. ${appointment.veterinarians.name}`}
                     </p>
-                    {!isDoctor && (
+                    {!isVeterinarian && (
                       <p className="text-blue-600 font-medium">
-                        {appointment.doctors.specialty}
+                        {appointment.veterinarians.specialty}
                       </p>
                     )}
-                    {isDoctor && (
+                    {isVeterinarian && appointment.pets && (
+                      <p className="text-gray-600 mt-1">
+                        Pet: {appointment.pets.name} ({appointment.pets.species})
+                      </p>
+                    )}
+                    {isVeterinarian && (
                       <p className="text-gray-600 flex items-center gap-1 mt-1">
                         <Mail className="h-4 w-4" />
-                        {appointment.patient.email}
+                        {appointment.owner.email}
                       </p>
                     )}
                   </div>
@@ -555,7 +568,7 @@ export function AppointmentDetails({
               {/* actions for upcoming appointments */}
               {isUpcoming && (
                 <div className="pt-4 border-t flex flex-wrap gap-3">
-                  {isDoctor ? (
+                  {isVeterinarian ? (
                     <>
                       {appointment.status === "pending" && (
                         <Button
@@ -603,7 +616,7 @@ export function AppointmentDetails({
           </Card>
 
           {/* consultation notes */}
-          {appointment.notes && (
+          {appointment.vet_notes && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -614,7 +627,7 @@ export function AppointmentDetails({
               <CardContent>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-gray-700 whitespace-pre-wrap">
-                    {appointment.notes}
+                    {appointment.vet_notes}
                   </p>
                 </div>
               </CardContent>
@@ -685,7 +698,7 @@ export function AppointmentDetails({
             <CardContent>
               {appointment.status !== "confirmed" ? (
                 <div className="border border-dashed border-yellow-200 bg-yellow-50 rounded-2xl p-4 text-sm text-yellow-800">
-                  Chat opens after the doctor confirms this appointment. You
+                  Chat opens after the veterinarian confirms this appointment. You
                   will receive an instant chat window here.
                 </div>
               ) : !chatRoom ? (
@@ -786,7 +799,7 @@ export function AppointmentDetails({
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-blue-600" />
-                <span className="text-blue-800">CareLink Medical Center</span>
+                <span className="text-blue-800">PetCare Veterinary Center</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-600" />

@@ -23,7 +23,7 @@ export default async function AppointmentPage({
     .eq("id", user.id)
     .single();
 
-  const isDoctor = profile?.role === "doctor";
+  const isVeterinarian = profile?.role === "veterinarian";
 
   // fetch appointment with all related data
   const { data: appointment } = await supabase
@@ -31,8 +31,9 @@ export default async function AppointmentPage({
     .select(
       `
       *,
-      doctors(id, name, specialty, image_url),
-      patient:patient_id(id, full_name, email)
+      veterinarians(id, name, specialty, image_url),
+      owner:owner_id(id, full_name, email),
+      pets(id, name, species, breed)
     `
     )
     .eq("id", id)
@@ -42,29 +43,29 @@ export default async function AppointmentPage({
     notFound();
   }
 
-  // verify access - patient can only see their own, doctor can see their patients
-  if (!isDoctor && appointment.patient_id !== user.id) {
+  // verify access - owner can only see their own, veterinarian can see their appointments
+  if (!isVeterinarian && appointment.owner_id !== user.id) {
     redirect("/dashboard");
   }
 
-  // if doctor, verify it's their appointment
-  if (isDoctor) {
-    const { data: doctorProfile } = await supabase
-      .from("doctors")
+  // if veterinarian, verify it's their appointment
+  if (isVeterinarian) {
+    const { data: vetProfile } = await supabase
+      .from("veterinarians")
       .select("id")
       .eq("user_id", user.id)
       .single();
 
-    if (appointment.doctor_id !== doctorProfile?.id) {
+    if (appointment.veterinarian_id !== vetProfile?.id) {
       redirect("/dashboard");
     }
   }
 
-  // get prescriptions for this appointment (based on patient and around appointment date)
+  // get prescriptions for this appointment
   const { data: prescriptions } = await supabase
     .from("prescriptions")
-    .select("*, doctors(name)")
-    .eq("patient_id", appointment.patient_id)
+    .select("*, veterinarians(name)")
+    .eq("appointment_id", appointment.id)
     .order("created_at", { ascending: false });
 
   const { data: chatRoom } = await supabase
@@ -94,7 +95,7 @@ export default async function AppointmentPage({
     <AppointmentDetails
       appointment={appointment}
       prescriptions={prescriptions || []}
-      isDoctor={isDoctor}
+      isVeterinarian={isVeterinarian}
       currentUserId={user.id}
       chatRoom={chatRoom}
       chatMessages={chatMessages}
