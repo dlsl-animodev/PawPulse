@@ -1,4 +1,5 @@
-import { createBlob } from "@/utils/audio/audioUtils";
+import { createBlob, decode, decodeAudioData } from "@/utils/audio/audioUtils";
+import { createClient } from "@/utils/supabase/client";
 import {
   FunctionDeclaration,
   GoogleGenAI,
@@ -7,10 +8,46 @@ import {
   Type,
 } from "@google/genai";
 
+const getMyPetsDeclaration: FunctionDeclaration = {
+  name: "getMyPets",
+  description:
+    "Retrieves the list of pets belonging to the currently authenticated user. Use this to help the user select which pet the appointment is for.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {},
+  },
+};
+
+const checkAuthStatusDeclaration: FunctionDeclaration = {
+  name: "checkAuthStatus",
+  description:
+    "Checks if the user is currently signed in. Use this to verify if the user can access their pets or needs to sign in.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {},
+  },
+};
+
+const getDoctorsDeclaration: FunctionDeclaration = {
+  name: "getDoctors",
+  description:
+    "Searches for available veterinarians. Use this when the user asks for a specific doctor or wants to know who is available. If the user says 'any', you can list a few available doctors or pick one for them.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      query: {
+        type: Type.STRING,
+        description:
+          "The name of the doctor to search for, or empty to list all available doctors.",
+      },
+    },
+  },
+};
+
 const completeConsultationDeclaration: FunctionDeclaration = {
   name: "completeConsultation",
   description:
-    "Call this when you have gathered enough information to book a vet appointment. You need to collect pet details, symptoms, and optionally preferred doctor, date, and time.",
+    "Call this IMMEDIATELY when you have gathered the required information (pet name, type, and symptoms). Do not ask for confirmation. Just call this function.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -35,20 +72,23 @@ const completeConsultationDeclaration: FunctionDeclaration = {
         description:
           "A detailed summary of the pet's symptoms, duration, and severity.",
       },
-      preferredDoctor: {
+      preferredDoctorId: {
         type: Type.STRING,
-        description:
-          "The name of the veterinarian the user wants to see, if any.",
+        description: "The ID of the selected veterinarian.",
+      },
+      preferredDoctorName: {
+        type: Type.STRING,
+        description: "The name of the selected veterinarian.",
       },
       preferredDate: {
         type: Type.STRING,
         description:
-          "The preferred date for the appointment (e.g., 'tomorrow', 'next Monday', or a specific date).",
+          "The preferred date for the appointment. Try to convert to YYYY-MM-DD format if possible, or use relative terms like 'tomorrow'.",
       },
       preferredTime: {
         type: Type.STRING,
         description:
-          "The preferred time for the appointment (e.g., 'morning', '2 PM').",
+          "The preferred time for the appointment. Try to convert to HH:MM format (24h) if possible, or use terms like 'morning'.",
       },
     },
     required: ["summary", "petName", "petType"],
@@ -57,15 +97,17 @@ const completeConsultationDeclaration: FunctionDeclaration = {
 
 const MODEL_NAME = "gemini-2.5-flash-native-audio-preview-09-2025";
 const SYSTEM_INSTRUCTION = `
-You are a gentle, patient, and professional AI Veterinary Assistant for CareLink.
-Your goal is to help the user book a vet appointment by gathering their pet's details, symptoms and preferences.
+You are a gentle, patient, and professional AI Veterinary Assistant for PawPulse.
+Your goal is to triage the user's request and gather information for the doctor. You DO NOT book the appointment yourself. You just collect the info.
 
 Protocol:
-1. Greet the user warmly (e.g., "Hello, I'm CareLink. I can help you book a vet appointment. First, could you tell me your pet's name and what kind of animal they are?").
+1. Greet the user warmly and ask for the pet's name and type.
 2. Gather pet details: Name, Type (Dog, Cat, etc.), Breed (optional), and Age.
 3. Gather key details about the issue: Main symptom, Duration, Severity.
-4. Ask if they have a preferred veterinarian, date, or time for the appointment.
-5. Once you have the information, call the completeConsultation function.
+4. Ask if they have a preferred veterinarian. If they mention a name or say "any", use the getDoctors tool to find a match or suggest one.
+5. Ask for preferred date or time for the appointment. Try to get a specific date (YYYY-MM-DD) and time (HH:MM) if possible.
+6. CRITICAL: As soon as you have the Pet Name, Pet Type, and Symptoms, you can proceed. If the user provides preferences, include them.
+7. When you have the info, Tell the user you are completing the consultation and they need to confirm the appointment on the next page. IMMEDIATELY call the completeConsultation tool with the collected info. Do NOT ask for confirmation after saying.
 
 Tone: Empathetic, Trustworthy, Calm. Keep sentences short.
 `;
@@ -76,7 +118,8 @@ export interface ConsultationResult {
   petBreed?: string;
   petAge?: string;
   summary: string;
-  preferredDoctor?: string;
+  preferredDoctorId?: string;
+  preferredDoctorName?: string;
   preferredDate?: string;
   preferredTime?: string;
 }
@@ -101,6 +144,7 @@ export class ConsultationService {
   private workletNode: AudioWorkletNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private callbacks: LiveSessionCallbacks;
+  private nextPlayTime = 0;
 
   constructor(apiKey: string, callbacks: LiveSessionCallbacks) {
     this.client = new GoogleGenAI({ apiKey });
@@ -138,7 +182,12 @@ export class ConsultationService {
           },
           tools: [
             {
-              functionDeclarations: [completeConsultationDeclaration],
+              functionDeclarations: [
+                completeConsultationDeclaration,
+                getMyPetsDeclaration,
+                checkAuthStatusDeclaration,
+                getDoctorsDeclaration,
+              ],
             },
           ],
           inputAudioTranscription: {},
@@ -170,10 +219,32 @@ export class ConsultationService {
     };
 
     this.source.connect(this.workletNode);
-    this.workletNode.connect(this.inputAudioContext.destination);
+    // this.workletNode.connect(this.inputAudioContext.destination);
   }
 
   private async handleMessage(message: LiveServerMessage) {
+    if (message.serverContent?.modelTurn?.parts) {
+      for (const part of message.serverContent.modelTurn.parts) {
+        if (
+          part.inlineData &&
+          part.inlineData.mimeType &&
+          part.inlineData.mimeType.startsWith("audio/")
+        ) {
+          const base64 = part.inlineData.data;
+          if (base64 && this.outputAudioContext) {
+            const audioData = decode(base64);
+            const audioBuffer = await decodeAudioData(
+              audioData,
+              this.outputAudioContext,
+              24000,
+              1
+            );
+            this.playAudio(audioBuffer);
+          }
+        }
+      }
+    }
+
     if (message.serverContent?.outputTranscription?.text) {
       this.callbacks.onText(
         message.serverContent.outputTranscription.text,
@@ -203,6 +274,49 @@ export class ConsultationService {
         //   this.sendToolResponse(fc.id, fc.name, { result: 'Options displayed to user. Waiting for selection.' });
         // } else
 
+        if (fc.name === "getMyPets") {
+          const supabase = createClient();
+          const { data, error } = await supabase.rpc("get_my_pets");
+          if (error) {
+            this.sendToolResponse(fc.id, fc.name, { error: error.message });
+          } else {
+            this.sendToolResponse(fc.id, fc.name, { pets: data });
+          }
+        }
+
+        if (fc.name === "checkAuthStatus") {
+          const supabase = createClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          this.sendToolResponse(fc.id, fc.name, {
+            isAuthenticated: !!user,
+            userId: user?.id,
+          });
+        }
+
+        if (fc.name === "getDoctors") {
+          const args = fc.args as any;
+          const query = args.query || "";
+          const supabase = createClient();
+          let dbQuery = supabase
+            .from("veterinarians")
+            .select("id, name, specialty")
+            .eq("is_available", true);
+
+          if (query && query.toLowerCase() !== "any") {
+            dbQuery = dbQuery.ilike("name", `%${query}%`);
+          }
+
+          const { data, error } = await dbQuery.order("name").limit(5);
+
+          if (error) {
+            this.sendToolResponse(fc.id, fc.name, { error: error.message });
+          } else {
+            this.sendToolResponse(fc.id, fc.name, { doctors: data });
+          }
+        }
+
         if (fc.name === "completeConsultation") {
           const args = fc.args as any;
           this.callbacks.onComplete({
@@ -211,7 +325,8 @@ export class ConsultationService {
             petBreed: args.petBreed,
             petAge: args.petAge,
             summary: args.summary,
-            preferredDoctor: args.preferredDoctor,
+            preferredDoctorId: args.preferredDoctorId,
+            preferredDoctorName: args.preferredDoctorName,
             preferredDate: args.preferredDate,
             preferredTime: args.preferredTime,
           });
@@ -239,13 +354,42 @@ export class ConsultationService {
   public sendTextResponse(text: string) {
     this.sessionPromise?.then((session) => {
       // Send the text as a user turn
-      session.sendRealtimeInput({
-        content: {
-          role: "user",
-          parts: [{ text: text }],
-        },
+      session.sendClientContent({
+        turns: [
+          {
+            role: "user",
+            parts: [{ text: text }],
+          },
+        ],
+        turnComplete: true,
       });
     });
+  }
+
+  private playAudio(buffer: AudioBuffer) {
+    if (!this.outputAudioContext) return;
+
+    const source = this.outputAudioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.outputAudioContext.destination);
+
+    const currentTime = this.outputAudioContext.currentTime;
+    if (this.nextPlayTime < currentTime) {
+      this.nextPlayTime = currentTime;
+    }
+
+    source.start(this.nextPlayTime);
+    this.nextPlayTime += buffer.duration;
+
+    this.callbacks.onAudioData(buffer);
+  }
+
+  public setMuted(muted: boolean) {
+    if (this.stream) {
+      this.stream.getAudioTracks().forEach((track) => {
+        track.enabled = !muted;
+      });
+    }
   }
 
   public async stop() {

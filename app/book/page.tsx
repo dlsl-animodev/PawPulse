@@ -51,7 +51,7 @@ export default async function BookPage() {
   const pets = await fetchAllPets();
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-blue-50 via-white to-white py-6 px-4">
+    <div className="min-h-screen bg-slate-50 py-6 px-4">
       <div className="max-w-5xl mx-auto">
         <BookingPageClient
           doctors={doctors}
